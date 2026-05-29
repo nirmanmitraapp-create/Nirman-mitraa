@@ -1,0 +1,51 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+
+    function isAdmin() {
+      return signedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users can read any profile, but only create/edit their own (admins can edit anyone)
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if request.auth.uid == uid;
+      allow update: if request.auth.uid == uid || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Sales / commissions — admins write, everyone signed-in can read
+    match /sales/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Gifts catalog
+    match /gifts/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
+    // Redemptions — users can request (create), admins manage
+    match /redemptions/{id} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if isAdmin();
+    }
+
+    // Buyer dues — admin only
+    match /dues/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Notifications — admins send, everyone reads
+    match /notifications/{id} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+  }
+}
