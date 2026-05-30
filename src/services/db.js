@@ -357,31 +357,43 @@ export async function addNotification(n) {
   if (!isFirebaseConfigured) return mock.add('notifications', record)
   const { collection, addDoc } = await firestore()
   const ref = await addDoc(collection(db, 'notifications'), record)
-  // Fire off background push (best-effort — never block the admin on it).
-  sendPush(record).catch((e) => console.warn('[push] failed:', e?.message || e))
-  return { id: ref.id, ...record }
+  // Deliver background push and report the result back to the admin UI so any
+  // failure is visible instead of silently swallowed.
+  const push = await sendPush(record)
+  return { id: ref.id, ...record, push }
 }
 
 // Ask the Vercel serverless function to deliver an FCM push to targeted users
 // who have the app closed/backgrounded. Foreground users get the in-app toast
 // via the live notifications listener, so this is purely for background devices.
+// Returns a diagnostic object: { ok, sent, status, error }.
 async function sendPush(record) {
-  const { auth } = await import('../firebase/config')
-  const idToken = await auth?.currentUser?.getIdToken?.()
-  if (!idToken) return
-  await fetch('/api/send-push', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({
-      title: record.title,
-      body: record.body,
-      audience: record.audience,
-      targetUserId: record.targetUserId,
-    }),
-  })
+  try {
+    const { auth } = await import('../firebase/config')
+    const idToken = await auth?.currentUser?.getIdToken?.()
+    if (!idToken) return { ok: false, error: 'No admin session (not signed in)' }
+    const res = await fetch('/api/send-push', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({
+        title: record.title,
+        body: record.body,
+        audience: record.audience,
+        targetUserId: record.targetUserId,
+      }),
+    })
+    let data = {}
+    try { data = await res.json() } catch { /* non-JSON (e.g. 404 HTML) */ }
+    if (!res.ok) {
+      return { ok: false, status: res.status, error: data.error || `HTTP ${res.status}` }
+    }
+    return { ok: true, sent: data.sent ?? 0 }
+  } catch (e) {
+    return { ok: false, error: e?.message || 'Request failed' }
+  }
 }
 
 export async function removeNotification(id) {

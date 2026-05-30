@@ -10,6 +10,7 @@ export default function AdminNotifications() {
   const [form, setForm] = useState({ title: '', body: '', audience: 'all', targetUserId: '' })
   const [busy, setBusy] = useState(false)
   const [sent, setSent] = useState(false)
+  const [pushStatus, setPushStatus] = useState(null)
 
   const load = () => listNotifications().then(setItems)
   useEffect(() => {
@@ -23,13 +24,15 @@ export default function AdminNotifications() {
   const send = async (e) => {
     e.preventDefault()
     setBusy(true)
-    await addNotification({
+    setPushStatus(null)
+    const result = await addNotification({
       title: form.title,
       body: form.body,
       audience: form.audience,
       targetUserId: form.audience === 'user' ? form.targetUserId : null,
     })
     setBusy(false)
+    setPushStatus(result?.push || null)
     setForm({ title: '', body: '', audience: 'all', targetUserId: '' })
     setSent(true)
     setTimeout(() => setSent(false), 2500)
@@ -75,6 +78,15 @@ export default function AdminNotifications() {
           <button type="submit" disabled={busy} className="btn-primary w-full">
             <Send className="h-4 w-4" /> {busy ? 'Sending…' : sent ? 'Sent!' : 'Send notification'}
           </button>
+          {pushStatus && (
+            <div className={`rounded-xl border px-3 py-2 text-sm ${pushStatus.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
+              {pushStatus.ok
+                ? pushStatus.sent > 0
+                  ? `📲 Background push delivered to ${pushStatus.sent} device${pushStatus.sent === 1 ? '' : 's'}.`
+                  : '⚠️ Saved, but 0 devices had a push token. Open the user app on a phone and allow notifications first.'
+                : `❌ Push failed: ${pushStatus.error}${pushStatus.status ? ` (HTTP ${pushStatus.status})` : ''}`}
+            </div>
+          )}
         </form>
 
         <div className="lg:col-span-3">
