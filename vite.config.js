@@ -35,8 +35,107 @@ function cloudinarySignPlugin() {
   }
 }
 
+// Dev-only middleware that mirrors /api/send-push so FCM push works with
+// plain `vite dev`. In production the Vercel serverless function handles it.
+function sendPushPlugin() {
+  return {
+    name: 'send-push',
+    configureServer(server) {
+      server.middlewares.use('/api/send-push', (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+        let raw = ''
+        req.on('data', (chunk) => { raw += chunk })
+        req.on('end', async () => {
+          const json = (body, status = 200) => {
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify(body))
+          }
+          try {
+            const env = loadEnv('development', process.cwd(), '')
+            const payload = JSON.parse(raw || '{}')
+
+            const { initializeApp, getApps, cert } = await import('firebase-admin/app')
+            const { getAuth } = await import('firebase-admin/auth')
+            const { getFirestore } = await import('firebase-admin/firestore')
+            const { getMessaging } = await import('firebase-admin/messaging')
+
+            if (!getApps().length) {
+              initializeApp({
+                credential: cert({
+                  projectId: env.FIREBASE_PROJECT_ID,
+                  clientEmail: env.FIREBASE_CLIENT_EMAIL,
+                  privateKey: (env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+                }),
+              })
+            }
+
+            const idToken = (req.headers.authorization || '').replace('Bearer ', '') || null
+            if (!idToken) return json({ error: 'Missing auth token' }, 401)
+
+            const decoded = await getAuth().verifyIdToken(idToken)
+            const email = (decoded.email || '').toLowerCase()
+            const adminEmails = (env.ADMIN_EMAILS || env.VITE_ADMIN_EMAILS || '')
+              .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+            if (!adminEmails.includes(email)) return json({ error: 'Not an admin' }, 403)
+
+            const { title = 'Mistri Rewards', body = '', audience = 'all', targetUserId = null } = payload
+            const db = getFirestore()
+            let userDocs = []
+            if (audience === 'all') {
+              userDocs = (await db.collection('users').get()).docs
+            } else if (targetUserId) {
+              const d = await db.collection('users').doc(targetUserId).get()
+              if (d.exists) userDocs = [d]
+            }
+
+            const tokens = userDocs.flatMap((d) => d.data().fcmTokens || [])
+            if (!tokens.length) return json({ sent: 0 })
+
+            const messaging = getMessaging()
+            let sent = 0
+            const invalid = []
+            for (let i = 0; i < tokens.length; i += 500) {
+              const batch = tokens.slice(i, i + 500)
+              const resp = await messaging.sendEachForMulticast({
+                tokens: batch,
+                data: { title: String(title), body: String(body), link: '/app/notifications' },
+                webpush: { headers: { Urgency: 'high' }, fcmOptions: { link: '/app/notifications' } },
+              })
+              sent += resp.successCount
+              resp.responses.forEach((r, idx) => {
+                if (!r.success && ['messaging/registration-token-not-registered', 'messaging/invalid-argument'].includes(r.error?.code)) {
+                  invalid.push(batch[idx])
+                }
+              })
+            }
+
+            if (invalid.length) {
+              const { FieldValue } = await import('firebase-admin/firestore')
+              await Promise.all(userDocs.map((d) => {
+                const t = d.data().fcmTokens
+                if (Array.isArray(t) && t.some((x) => invalid.includes(x))) {
+                  return d.ref.update({ fcmTokens: FieldValue.arrayRemove(...invalid) })
+                }
+              }))
+            }
+
+            json({ sent })
+          } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: e?.message || 'Push failed' }))
+          }
+        })
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), cloudinarySignPlugin()],
+  plugins: [react(), tailwindcss(), cloudinarySignPlugin(), sendPushPlugin()],
   server: {
     host: true,
     port: 5173,

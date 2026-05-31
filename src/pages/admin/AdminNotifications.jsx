@@ -44,7 +44,7 @@ export default function AdminNotifications() {
 
   return (
     <div className="space-y-5">
-      <SectionHeader title="Notification Management" subtitle="Broadcast updates to users (also delivers via push when Firebase Cloud Messaging is configured)" />
+      <SectionHeader title="Notification Management" subtitle="Send updates and alerts to all users or a specific user" />
 
       <div className="grid gap-5 lg:grid-cols-5">
         <form onSubmit={send} className="card space-y-3 p-5 lg:col-span-2">
@@ -83,9 +83,9 @@ export default function AdminNotifications() {
             <div className={`rounded-xl border px-3 py-2 text-sm ${pushStatus.ok ? 'border-emerald-200 bg-emerald-50 text-emerald-700' : 'border-rose-200 bg-rose-50 text-rose-700'}`}>
               {pushStatus.ok
                 ? pushStatus.sent > 0
-                  ? `📲 Background push delivered to ${pushStatus.sent} device${pushStatus.sent === 1 ? '' : 's'}.`
-                  : '⚠️ Saved, but 0 devices had a push token. Open the user app on a phone and allow notifications first.'
-                : `❌ Push failed: ${pushStatus.error}${pushStatus.status ? ` (HTTP ${pushStatus.status})` : ''}`}
+                  ? `Push delivered to ${pushStatus.sent} device${pushStatus.sent === 1 ? '' : 's'}.`
+                  : 'Saved. No devices have push enabled yet — users must open the app and allow notifications.'
+                : `Push failed: ${pushStatus.error}`}
             </div>
           )}
         </form>
