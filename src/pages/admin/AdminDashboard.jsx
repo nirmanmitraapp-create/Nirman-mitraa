@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { Users, Coins, Gift, ReceiptIndianRupee, TrendingUp } from 'lucide-react'
+import { Users, Coins, PackageCheck, ReceiptIndianRupee, TrendingUp } from 'lucide-react'
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid,
   PieChart, Pie, Cell, Legend,
@@ -105,7 +105,7 @@ export default function AdminDashboard() {
         <StatCard icon={Users} tone="blue" label="Active Users" value={num(stats.userCount)} sub="all time" />
         <StatCard icon={ReceiptIndianRupee} tone="green" label="Commissions" value={num(windowSales.length)} sub={cfg.full} />
         <StatCard icon={Coins} tone="gold" label="Points Issued" value={num(windowPoints)} sub={cfg.full} />
-        <StatCard icon={Gift} tone="rose" label="Pending Gifts" value={num(stats.pendingRedemptions)} sub="awaiting action" />
+        <StatCard icon={PackageCheck} tone="rose" label="Pts Redeemed" value={num(stats.totalPointsRedeemed)} sub="all time" />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-5">

@@ -170,7 +170,7 @@ export function Pagination({ page, totalPages, onChange, total, start, pageSize,
 // Place inside a sized container (the <img> fills it).
 export function GiftImage({ image, emojiClass = 'text-4xl' }) {
   const isUrl = typeof image === 'string' && /^https?:\/\//.test(image)
-  if (isUrl) return <img src={image} alt="" className="h-full w-full rounded-xl object-cover" />
+  if (isUrl) return <img src={image} alt="" className="h-full w-full object-contain" />
   return <span className={emojiClass}>{image || '🎁'}</span>
 }
 

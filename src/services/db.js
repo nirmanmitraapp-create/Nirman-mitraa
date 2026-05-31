@@ -391,6 +391,8 @@ export async function getAdminStats() {
     totalSales,
     totalPoints,
     pendingRedemptions: redemptions.filter((r) => r.status === 'pending').length,
+    totalRedemptions: redemptions.length,
+    totalPointsRedeemed: redemptions.reduce((s, r) => s + (r.pointsCost || 0), 0),
     sales,
     users: mistris,
   }

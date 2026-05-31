@@ -208,8 +208,6 @@ export default function Commissions() {
                   placeholder="Search by name or Referral ID…"
                   value={pick}
                   onChange={(e) => { setPick(e.target.value); setDropOpen(true) }}
-                  onClick={() => setDropOpen(true)}
-                  onFocus={() => setDropOpen(true)}
                   autoComplete="off"
                   autoFocus
                 />
