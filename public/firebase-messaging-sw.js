@@ -25,6 +25,8 @@ messaging.onBackgroundMessage((payload) => {
     body: d.body || '',
     icon: '/favicon.svg',
     badge: '/favicon.svg',
+    vibrate: [200, 100, 200],
+    silent: false,
     data: { link: d.link || '/app/notifications' },
   })
 })

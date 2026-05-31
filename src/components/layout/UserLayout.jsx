@@ -16,6 +16,26 @@ const nav = [
 
 const SEEN_KEY = 'mistri_notif_seen_at'
 
+function playNotificationSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const gain = ctx.createGain()
+    gain.connect(ctx.destination)
+    gain.gain.setValueAtTime(0.25, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5)
+    // Two-note chime: A5 → C#6
+    const notes = [880, 1109]
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      osc.type = 'sine'
+      osc.frequency.setValueAtTime(freq, ctx.currentTime + i * 0.15)
+      osc.connect(gain)
+      osc.start(ctx.currentTime + i * 0.15)
+      osc.stop(ctx.currentTime + i * 0.15 + 0.3)
+    })
+  } catch { /* AudioContext not supported or blocked */ }
+}
+
 export default function UserLayout() {
   const { profile, logout } = useAuth()
   const navigate = useNavigate()
@@ -46,10 +66,7 @@ export default function UserLayout() {
         knownIds.current.add(n.id)
         setUnread((u) => u + 1)
         setToast({ title: n.title, body: n.body })
-        // OS-level notification if the user granted permission
-        if ('Notification' in window && Notification.permission === 'granted') {
-          try { new Notification(n.title, { body: n.body, icon: '/favicon.svg' }) } catch { /* ignore */ }
-        }
+        playNotificationSound()
       })
       if (fresh.length) setTimeout(() => setToast(null), 6000)
     }).then((fn) => { unsub = fn })
