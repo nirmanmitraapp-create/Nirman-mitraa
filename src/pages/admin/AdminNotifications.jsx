@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Send, Trash2, Bell, Users, User } from 'lucide-react'
 import { listNotifications, addNotification, removeNotification, listUsers } from '../../services/db'
-import { SectionHeader, PageLoader, EmptyState, Badge } from '../../components/ui/index.jsx'
+import { SectionHeader, PageLoader, EmptyState, Badge, Pagination, usePaged } from '../../components/ui/index.jsx'
 import { timeAgo } from '../../utils/format'
 
 export default function AdminNotifications() {
@@ -17,6 +17,7 @@ export default function AdminNotifications() {
     load()
     listUsers().then((u) => setUsers(u.filter((x) => x.role !== 'admin')))
   }, [])
+  const paged = usePaged(items || [], 8)
   if (!items) return <PageLoader />
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
@@ -95,7 +96,7 @@ export default function AdminNotifications() {
             <EmptyState icon={Bell} title="Nothing sent yet" />
           ) : (
             <div className="space-y-3">
-              {items.map((n) => (
+              {paged.pageItems.map((n) => (
                 <div key={n.id} className="card flex gap-3 p-4">
                   <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-50 text-brand-600"><Bell className="h-5 w-5" /></span>
                   <div className="min-w-0 flex-1">
@@ -111,6 +112,7 @@ export default function AdminNotifications() {
                   </div>
                 </div>
               ))}
+              <Pagination {...paged} onChange={paged.setPage} label="notifications" />
             </div>
           )}
         </div>

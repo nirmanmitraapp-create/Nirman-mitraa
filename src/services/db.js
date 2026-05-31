@@ -256,55 +256,6 @@ export async function updateRedemption(id, patch) {
 }
 
 /* =========================================================================
-   BUYER DUES
-========================================================================= */
-export async function listDues() {
-  if (!isFirebaseConfigured)
-    return [...mock.get('dues')].sort((a, b) => b.createdAt - a.createdAt)
-  const { collection, getDocs, orderBy, query } = await firestore()
-  const snap = await getDocs(query(collection(db, 'dues'), orderBy('createdAt', 'desc')))
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }))
-}
-
-export async function addDue(due) {
-  const amount = Number(due.amount) || 0
-  const paid = Number(due.paid) || 0
-  const record = {
-    customerName: due.customerName || '',
-    customerPhone: due.customerPhone || '',
-    referralId: due.referralId || '',
-    amount,
-    paid,
-    note: due.note || '',
-    status: paid >= amount ? 'cleared' : 'pending',
-    createdAt: Date.now(),
-  }
-  if (!isFirebaseConfigured) return mock.add('dues', record)
-  const { collection, addDoc } = await firestore()
-  const ref = await addDoc(collection(db, 'dues'), record)
-  return { id: ref.id, ...record }
-}
-
-export async function updateDue(id, patch) {
-  if (patch.amount != null || patch.paid != null) {
-    const due = (await listDues()).find((d) => d.id === id)
-    const amount = patch.amount != null ? Number(patch.amount) : due.amount
-    const paid = patch.paid != null ? Number(patch.paid) : due.paid
-    patch.status = paid >= amount ? 'cleared' : 'pending'
-  }
-  if (!isFirebaseConfigured) return mock.update('dues', id, patch)
-  const { doc, updateDoc } = await firestore()
-  await updateDoc(doc(db, 'dues', id), patch)
-  return { id, ...patch }
-}
-
-export async function removeDue(id) {
-  if (!isFirebaseConfigured) return mock.remove('dues', id)
-  const { doc, deleteDoc } = await firestore()
-  await deleteDoc(doc(db, 'dues', id))
-}
-
-/* =========================================================================
    NOTIFICATIONS
 ========================================================================= */
 export async function listNotifications() {
@@ -424,25 +375,20 @@ export async function getLeaderboard() {
 }
 
 export async function getAdminStats() {
-  const [users, sales, redemptions, dues] = await Promise.all([
+  const [users, sales, redemptions] = await Promise.all([
     listUsers(),
     listSales(),
     listRedemptions(),
-    listDues(),
   ])
   const mistris = users.filter((u) => u.role !== 'admin')
   const totalSales = sales.reduce((s, x) => s + (x.amount || 0), 0)
   const totalPoints = sales.reduce((s, x) => s + (x.commissionPoints || 0), 0)
-  const outstandingDue = dues
-    .filter((d) => d.status === 'pending')
-    .reduce((s, d) => s + ((d.amount || 0) - (d.paid || 0)), 0)
   return {
     userCount: mistris.length,
     salesCount: sales.length,
     totalSales,
     totalPoints,
     pendingRedemptions: redemptions.filter((r) => r.status === 'pending').length,
-    outstandingDue,
     sales,
     users: mistris,
   }

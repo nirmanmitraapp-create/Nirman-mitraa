@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Search, Coins, Plus, Minus } from 'lucide-react'
 import { listUsers, updateUser, getLeaderboard } from '../../services/db'
-import { SectionHeader, PageLoader, Avatar, Modal, Badge } from '../../components/ui/index.jsx'
+import { SectionHeader, PageLoader, Avatar, Modal, Badge, Pagination, usePaged } from '../../components/ui/index.jsx'
 import { num, inr, dateStr } from '../../utils/format'
 
 export default function ManageUsers() {
@@ -14,14 +14,15 @@ export default function ManageUsers() {
   const load = () => getLeaderboard().then(setRows)
   useEffect(() => { load() }, [])
 
-  if (!rows) return <PageLoader />
-
-  const filtered = rows.filter(
+  const filtered = (rows || []).filter(
     (u) =>
       u.name?.toLowerCase().includes(q.toLowerCase()) ||
       u.referralId?.toLowerCase().includes(q.toLowerCase()) ||
       u.phone?.includes(q),
   )
+  const paged = usePaged(filtered, 10)
+
+  if (!rows) return <PageLoader />
 
   const adjust = async (sign) => {
     const amt = sign * Math.abs(Number(delta) || 0)
@@ -48,7 +49,7 @@ export default function ManageUsers() {
 
       {/* Mobile cards */}
       <div className="space-y-3 lg:hidden">
-        {filtered.map((u) => (
+        {paged.pageItems.map((u) => (
           <div key={u.id} className="card p-4">
             <div className="flex items-center gap-3">
               <Avatar name={u.name} src={u.photoURL} />
@@ -84,7 +85,7 @@ export default function ManageUsers() {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-50">
-            {filtered.map((u) => (
+            {paged.pageItems.map((u) => (
               <tr key={u.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
@@ -109,6 +110,8 @@ export default function ManageUsers() {
           </tbody>
         </table>
       </div>
+
+      <Pagination {...paged} onChange={paged.setPage} label="users" />
 
       <Modal open={!!active} onClose={() => setActive(null)} title="Adjust points">
         {active && (

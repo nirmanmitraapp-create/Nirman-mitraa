@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
-  LayoutDashboard, Users, ReceiptIndianRupee, Coins, Wallet2,
+  LayoutDashboard, Users, Coins,
   Gift, Bell, LogOut, Menu, X,
 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
@@ -9,10 +9,8 @@ import { Avatar } from '../ui/index.jsx'
 
 const nav = [
   { to: '/admin', label: 'Dashboard', icon: LayoutDashboard, end: true },
-  { to: '/admin/record-sale', label: 'Record Sale', icon: ReceiptIndianRupee },
   { to: '/admin/users', label: 'Users', icon: Users },
   { to: '/admin/commissions', label: 'Commissions', icon: Coins },
-  { to: '/admin/dues', label: 'Buyer Dues', icon: Wallet2 },
   { to: '/admin/gifts', label: 'Gifts & Rewards', icon: Gift },
   { to: '/admin/notifications', label: 'Notifications', icon: Bell },
 ]

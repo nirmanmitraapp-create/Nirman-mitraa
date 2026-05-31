@@ -1,4 +1,5 @@
-import { Loader2, X } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react'
 
 export function Spinner({ className = '' }) {
   return <Loader2 className={`animate-spin ${className}`} />
@@ -73,7 +74,7 @@ export function Badge({ children, tone = 'slate' }) {
   return <span className={`chip ${tones[tone]}`}>{children}</span>
 }
 
-export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' }) {
+export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md', bodyClassName = 'max-h-[75vh] overflow-y-auto' }) {
   if (!open) return null
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" onClick={onClose}>
@@ -82,14 +83,85 @@ export function Modal({ open, onClose, title, children, maxWidth = 'max-w-md' })
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-          <h3 className="font-bold text-slate-900">{title}</h3>
+          <h3 className="text-lg font-bold text-slate-900">{title}</h3>
           <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
             <X className="h-5 w-5" />
           </button>
         </div>
-        <div className="max-h-[75vh] overflow-y-auto p-5">{children}</div>
+        <div className={`${bodyClassName} p-5`}>{children}</div>
       </div>
       <style>{`@keyframes slideUp{from{transform:translateY(20px);opacity:.6}to{transform:translateY(0);opacity:1}}`}</style>
+    </div>
+  )
+}
+
+// Slice an array into pages. Returns the current page's items plus controls.
+// Auto-resets to page 1 when the list shrinks below the current page (e.g. on filter).
+export function usePaged(items, pageSize = 10) {
+  const [page, setPage] = useState(1)
+  const total = items.length
+  const totalPages = Math.max(1, Math.ceil(total / pageSize))
+  useEffect(() => { if (page > totalPages) setPage(1) }, [page, totalPages])
+  const safePage = Math.min(page, totalPages)
+  const start = (safePage - 1) * pageSize
+  const pageItems = items.slice(start, start + pageSize)
+  return { page: safePage, setPage, totalPages, pageItems, total, start, pageSize }
+}
+
+// Build a compact page list with ellipses, e.g. [1, '…', 4, 5, 6, '…', 12]
+function pageList(page, totalPages) {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+  const out = [1]
+  const lo = Math.max(2, page - 1)
+  const hi = Math.min(totalPages - 1, page + 1)
+  if (lo > 2) out.push('…')
+  for (let i = lo; i <= hi; i++) out.push(i)
+  if (hi < totalPages - 1) out.push('…')
+  out.push(totalPages)
+  return out
+}
+
+export function Pagination({ page, totalPages, onChange, total, start, pageSize, label = 'items', className = '' }) {
+  if (totalPages <= 1) return null
+  const from = start + 1
+  const to = Math.min(start + pageSize, total)
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-3 ${className}`}>
+      <p className="text-xs text-slate-400">Showing <b className="text-slate-600">{from}–{to}</b> of {total} {label}</p>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onChange(page - 1)}
+          disabled={page <= 1}
+          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 disabled:opacity-40 enabled:hover:bg-slate-50"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        {pageList(page, totalPages).map((p, i) =>
+          p === '…' ? (
+            <span key={`e${i}`} className="px-1.5 text-sm text-slate-300">…</span>
+          ) : (
+            <button
+              key={p}
+              type="button"
+              onClick={() => onChange(p)}
+              className={`h-8 min-w-8 rounded-lg px-2 text-sm font-medium ${
+                p === page ? 'bg-brand-600 text-white' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {p}
+            </button>
+          ),
+        )}
+        <button
+          type="button"
+          onClick={() => onChange(page + 1)}
+          disabled={page >= totalPages}
+          className="grid h-8 w-8 place-items-center rounded-lg border border-slate-200 text-slate-500 disabled:opacity-40 enabled:hover:bg-slate-50"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   )
 }

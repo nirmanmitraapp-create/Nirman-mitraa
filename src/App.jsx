@@ -13,10 +13,8 @@ import Notifications from './pages/user/Notifications'
 
 import AdminLayout from './components/layout/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
-import RecordSale from './pages/admin/RecordSale'
-import ManageUsers from './pages/admin/ManageUsers' 
+import ManageUsers from './pages/admin/ManageUsers'
 import Commissions from './pages/admin/Commissions'
-import BuyerDues from './pages/admin/BuyerDues'
 import ManageGifts from './pages/admin/ManageGifts'
 import AdminNotifications from './pages/admin/AdminNotifications'
 
@@ -52,10 +50,8 @@ export default function App() {
         }
       >
         <Route index element={<AdminDashboard />} />
-        <Route path="record-sale" element={<RecordSale />} />
         <Route path="users" element={<ManageUsers />} />
         <Route path="commissions" element={<Commissions />} />
-        <Route path="dues" element={<BuyerDues />} />
         <Route path="gifts" element={<ManageGifts />} />
         <Route path="notifications" element={<AdminNotifications />} />
       </Route>

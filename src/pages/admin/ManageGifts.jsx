@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Plus, Pencil, Trash2, Gift, Coins, PackageCheck, HandCoins, Search } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { listGifts, addGift, updateGift, removeGift, listRedemptions, updateRedemption, listUsers, adminGiveGift } from '../../services/db'
-import { SectionHeader, PageLoader, Modal, Badge, EmptyState, Avatar } from '../../components/ui/index.jsx'
+import { SectionHeader, PageLoader, Modal, Badge, EmptyState, Avatar, Pagination, usePaged } from '../../components/ui/index.jsx'
 import { num, timeAgo } from '../../utils/format'
 
 const blank = { title: '', description: '', pointsCost: '', image: '🎁', stock: '', active: true }
@@ -31,6 +31,7 @@ export default function ManageGifts() {
     listUsers().then((u) => setUsers(u.filter((x) => x.role !== 'admin')))
   }
   useEffect(() => { load() }, [])
+  const pagedRedemptions = usePaged(redemptions || [], 8)
   if (!gifts || !redemptions) return <PageLoader />
 
   const giveToUser = async (user) => {
@@ -125,7 +126,7 @@ export default function ManageGifts() {
           <EmptyState icon={PackageCheck} title="No redemptions yet" />
         ) : (
           <div className="space-y-3">
-            {redemptions.map((r) => (
+            {pagedRedemptions.pageItems.map((r) => (
               <div key={r.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="flex items-center gap-3">
                   <Avatar name={r.userId} size="h-10 w-10" />
@@ -148,6 +149,7 @@ export default function ManageGifts() {
                 </div>
               </div>
             ))}
+            <Pagination {...pagedRedemptions} onChange={pagedRedemptions.setPage} label="redemptions" />
           </div>
         )
       )}
