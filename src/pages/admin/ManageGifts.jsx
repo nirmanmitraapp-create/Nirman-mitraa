@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
-import { Plus, Pencil, Trash2, Gift, Coins, PackageCheck, HandCoins, Search } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { Plus, Pencil, Trash2, Gift, Coins, PackageCheck, HandCoins, Search, Upload, ImageOff, Loader2 } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { listGifts, addGift, updateGift, removeGift, listRedemptions, updateRedemption, listUsers, adminGiveGift } from '../../services/db'
-import { SectionHeader, PageLoader, Modal, Badge, EmptyState, Avatar, Pagination, usePaged } from '../../components/ui/index.jsx'
+import { SectionHeader, PageLoader, Modal, Badge, EmptyState, Avatar, Pagination, usePaged, GiftImage } from '../../components/ui/index.jsx'
+import { uploadImage, isCloudinaryConfigured, isImageUrl } from '../../services/cloudinary'
 import { num, timeAgo } from '../../utils/format'
 
-const blank = { title: '', description: '', pointsCost: '', image: '🎁', stock: '', active: true }
+const blank = { title: '', pointsCost: '', image: '🎁' }
 const EMOJIS = ['🎁', '🥤', '👕', '🧰', '📱', '⛑️', '🔧', '🎽', '⌚', '🎒', '🪛', '☂️']
 const statusTone = { pending: 'amber', approved: 'blue', delivered: 'green', rejected: 'rose' }
 
@@ -24,6 +25,10 @@ export default function ManageGifts() {
   const [userQuery, setUserQuery] = useState('')
   const [giveErr, setGiveErr] = useState('')
   const [toast, setToast] = useState('')
+  // gift image upload
+  const [uploading, setUploading] = useState(false)
+  const [uploadErr, setUploadErr] = useState('')
+  const fileRef = useRef(null)
 
   const load = () => {
     listGifts().then(setGifts)
@@ -60,14 +65,30 @@ export default function ManageGifts() {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const openNew = () => { setEditing(null); setForm(blank); setOpen(true) }
-  const openEdit = (g) => { setEditing(g); setForm({ ...g, pointsCost: String(g.pointsCost), stock: String(g.stock) }); setOpen(true) }
+  const openNew = () => { setEditing(null); setForm(blank); setUploadErr(''); setOpen(true) }
+  const openEdit = (g) => { setEditing(g); setForm({ title: g.title, pointsCost: String(g.pointsCost), image: g.image }); setUploadErr(''); setOpen(true) }
+
+  const onPickImage = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file
+    if (!file) return
+    setUploadErr('')
+    setUploading(true)
+    try {
+      const url = await uploadImage(file)
+      setForm((f) => ({ ...f, image: url }))
+    } catch (err) {
+      setUploadErr(err.message)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const save = async (e) => {
     e.preventDefault()
     setBusy(true)
-    if (editing) await updateGift(editing.id, { ...form, pointsCost: Number(form.pointsCost), stock: Number(form.stock) })
-    else await addGift(form)
+    if (editing) await updateGift(editing.id, { title: form.title, pointsCost: Number(form.pointsCost), image: form.image })
+    else await addGift({ title: form.title, pointsCost: Number(form.pointsCost), image: form.image })
     setBusy(false)
     setOpen(false)
     load()
@@ -77,6 +98,7 @@ export default function ManageGifts() {
   const setStatus = async (id, status) => { await updateRedemption(id, { status }); load() }
 
   const pendingCount = redemptions.filter((r) => r.status === 'pending').length
+  const userMap = Object.fromEntries(users.map((u) => [u.id, u]))
 
   return (
     <div className="space-y-5">
@@ -99,15 +121,14 @@ export default function ManageGifts() {
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           {gifts.map((g) => (
             <div key={g.id} className="card flex flex-col p-4">
-              <div className="grid h-20 place-items-center rounded-xl bg-slate-50 text-4xl">{g.image}</div>
-              <div className="mt-2 flex items-center justify-between">
-                <p className="line-clamp-1 font-semibold text-slate-900">{g.title}</p>
-                {!g.active && <Badge tone="slate">off</Badge>}
+              <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-slate-50">
+                <GiftImage image={g.image} emojiClass="absolute inset-0 flex items-center justify-center text-5xl w-full h-full" />
               </div>
-              <p className="line-clamp-2 text-xs text-slate-500">{g.description}</p>
-              <div className="mt-2 flex items-center justify-between text-xs">
-                <span className="flex items-center gap-1 font-bold text-amber-600"><Coins className="h-3.5 w-3.5" />{num(g.pointsCost)}</span>
-                <span className="text-slate-400">Stock: {g.stock}</span>
+              <div className="mt-3">
+                <p className="line-clamp-1 font-semibold text-slate-900">{g.title}</p>
+              </div>
+              <div className="mt-1.5 flex items-center gap-1 text-sm font-bold text-amber-600">
+                <Coins className="h-3.5 w-3.5" />{num(g.pointsCost)} pts
               </div>
               <button onClick={() => { setGiveErr(''); setUserQuery(''); setGiving(g) }} className="btn-primary mt-3 w-full text-xs">
                 <HandCoins className="h-3.5 w-3.5" /> Give to user
@@ -126,12 +147,16 @@ export default function ManageGifts() {
           <EmptyState icon={PackageCheck} title="No redemptions yet" />
         ) : (
           <div className="space-y-3">
-            {pagedRedemptions.pageItems.map((r) => (
+            {pagedRedemptions.pageItems.map((r) => {
+              const u = userMap[r.userId]
+              const contractorName = r.userName || u?.name || '—'
+              return (
               <div key={r.id} className="card flex flex-wrap items-center justify-between gap-3 p-4">
                 <div className="flex items-center gap-3">
-                  <Avatar name={r.userId} size="h-10 w-10" />
+                  <Avatar name={contractorName} src={u?.photoURL} size="h-10 w-10" />
                   <div>
                     <p className="font-semibold text-slate-900">{r.giftTitle}</p>
+                    <p className="text-sm font-medium text-slate-700">{contractorName}</p>
                     <p className="text-xs text-slate-500">{num(r.pointsCost)} pts · {timeAgo(r.createdAt)}</p>
                   </div>
                 </div>
@@ -148,7 +173,8 @@ export default function ManageGifts() {
                   )}
                 </div>
               </div>
-            ))}
+              )
+            })}
             <Pagination {...pagedRedemptions} onChange={pagedRedemptions.setPage} label="redemptions" />
           </div>
         )
@@ -157,8 +183,49 @@ export default function ManageGifts() {
       <Modal open={open} onClose={() => setOpen(false)} title={editing ? 'Edit gift' : 'Add gift'}>
         <form onSubmit={save} className="space-y-3">
           <div>
-            <label className="label">Icon</label>
-            <div className="flex flex-wrap gap-1.5">
+            <label className="label">Gift image</label>
+            <div className="flex items-center gap-4">
+              {/* preview */}
+              <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-3xl">
+                <GiftImage image={form.image} emojiClass="text-3xl" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                {isCloudinaryConfigured ? (
+                  <>
+                    <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={onPickImage} />
+                    <button
+                      type="button"
+                      onClick={() => fileRef.current?.click()}
+                      disabled={uploading}
+                      className="btn-ghost w-full justify-center text-sm"
+                    >
+                      {uploading
+                        ? <><Loader2 className="h-4 w-4 animate-spin" /> Uploading…</>
+                        : <><Upload className="h-4 w-4" /> {isImageUrl(form.image) ? 'Replace image' : 'Upload image'}</>}
+                    </button>
+                    {isImageUrl(form.image) && !uploading && (
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, image: '🎁' }))}
+                        className="mt-1.5 flex items-center gap-1 text-xs font-medium text-rose-600 hover:underline"
+                      >
+                        <ImageOff className="h-3.5 w-3.5" /> Remove image
+                      </button>
+                    )}
+                  </>
+                ) : (
+                  <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                    Image upload is disabled — set <span className="font-mono">VITE_CLOUDINARY_CLOUD_NAME</span> in <span className="font-mono">.env</span>. You can still pick an emoji below.
+                  </p>
+                )}
+                {uploadErr && <p className="mt-1.5 text-xs text-rose-600">{uploadErr}</p>}
+              </div>
+            </div>
+
+            {/* emoji fallback */}
+            <p className="mt-3 text-xs text-slate-400">Or pick an emoji icon</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
               {EMOJIS.map((e) => (
                 <button type="button" key={e} onClick={() => setForm((f) => ({ ...f, image: e }))}
                   className={`grid h-10 w-10 place-items-center rounded-lg text-xl ${form.image === e ? 'bg-brand-100 ring-2 ring-brand-500' : 'bg-slate-100'}`}>
@@ -169,27 +236,18 @@ export default function ManageGifts() {
           </div>
           <div>
             <label className="label">Title</label>
-            <input className="input" value={form.title} onChange={set('title')} required />
+            <input className="input" value={form.title} onChange={set('title')} placeholder="e.g. iPhone 16 Pro Max" required />
           </div>
           <div>
-            <label className="label">Description</label>
-            <input className="input" value={form.description} onChange={set('description')} />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">Points cost</label>
-              <input className="input" type="number" min="0" value={form.pointsCost} onChange={set('pointsCost')} required />
-            </div>
-            <div>
-              <label className="label">Stock</label>
-              <input className="input" type="number" min="0" value={form.stock} onChange={set('stock')} required />
+            <label className="label">Points cost</label>
+            <div className="relative">
+              <Coins className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <input className="input pl-9" type="number" min="0" value={form.pointsCost} onChange={set('pointsCost')} placeholder="0" required />
             </div>
           </div>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
-            <input type="checkbox" checked={form.active} onChange={(e) => setForm((f) => ({ ...f, active: e.target.checked }))} className="h-4 w-4 rounded" />
-            Active (visible to users)
-          </label>
-          <button type="submit" disabled={busy} className="btn-primary w-full">{busy ? 'Saving…' : editing ? 'Update gift' : 'Add gift'}</button>
+          <button type="submit" disabled={busy || uploading} className="btn-primary w-full">
+            {busy ? 'Saving…' : editing ? 'Update gift' : 'Add gift'}
+          </button>
         </form>
       </Modal>
 
@@ -198,7 +256,7 @@ export default function ManageGifts() {
         {giving && (
           <div>
             <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-              <span className="grid h-12 w-12 place-items-center rounded-xl bg-white text-3xl">{giving.image}</span>
+              <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-xl bg-white text-3xl"><GiftImage image={giving.image} emojiClass="text-3xl" /></span>
               <div>
                 <p className="font-semibold text-slate-900">{giving.title}</p>
                 <p className="flex items-center gap-1 text-sm text-amber-600"><Coins className="h-3.5 w-3.5" /> {num(giving.pointsCost)} pts will be deducted</p>

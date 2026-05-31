@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
 import { Search, Coins, ReceiptIndianRupee, Plus, UserCheck, AlertCircle, Check, ChevronDown } from 'lucide-react'
+import { DateRangePicker } from '../../components/ui/DateRangePicker'
 import { listSales, listUsers, recordSale } from '../../services/db'
 import { useAuth } from '../../context/AuthContext'
 import {
@@ -13,6 +14,7 @@ export default function Commissions() {
   const [sales, setSales] = useState(null)
   const [users, setUsers] = useState([])
   const [q, setQ] = useState('')
+  const [dateRange, setDateRange] = useState({ from: undefined, to: undefined })
 
   // add-commission modal
   const [open, setOpen] = useState(false)
@@ -47,10 +49,15 @@ export default function Commissions() {
   const rows = useMemo(() => {
     const list = (sales || []).map((s) => ({ ...s, name: refName(s) }))
     const ql = q.toLowerCase()
-    return list.filter(
-      (s) => s.name?.toLowerCase().includes(ql) || s.referralId?.toLowerCase().includes(ql),
-    )
-  }, [sales, users, q])
+    const fromMs = dateRange.from ? new Date(dateRange.from).setHours(0, 0, 0, 0) : null
+    const toMs = dateRange.to ? new Date(dateRange.to).setHours(23, 59, 59, 999) : null
+    return list.filter((s) => {
+      if (ql && !s.name?.toLowerCase().includes(ql) && !s.referralId?.toLowerCase().includes(ql)) return false
+      if (fromMs && s.createdAt < fromMs) return false
+      if (toMs && s.createdAt > toMs) return false
+      return true
+    })
+  }, [sales, users, q, dateRange])
 
   const paged = usePaged(rows, 10)
 
@@ -107,6 +114,12 @@ export default function Commissions() {
         <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
         <input className="input pl-9" placeholder="Search by name or referral ID…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
+
+      <DateRangePicker
+        from={dateRange.from}
+        to={dateRange.to}
+        onChange={setDateRange}
+      />
 
       {rows.length === 0 ? (
         <EmptyState icon={ReceiptIndianRupee} title="No commissions found" subtitle="Add a commission to credit points to a Mistri." />

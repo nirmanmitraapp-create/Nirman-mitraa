@@ -166,6 +166,14 @@ export function Pagination({ page, totalPages, onChange, total, start, pageSize,
   )
 }
 
+// Renders a gift's image: a Cloudinary URL as a cover <img>, or an emoji icon.
+// Place inside a sized container (the <img> fills it).
+export function GiftImage({ image, emojiClass = 'text-4xl' }) {
+  const isUrl = typeof image === 'string' && /^https?:\/\//.test(image)
+  if (isUrl) return <img src={image} alt="" className="h-full w-full rounded-xl object-cover" />
+  return <span className={emojiClass}>{image || '🎁'}</span>
+}
+
 export function Avatar({ name, src, size = 'h-10 w-10' }) {
   const initials = (name || '?')
     .split(' ')

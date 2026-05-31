@@ -183,6 +183,7 @@ export async function redeemGift(user, gift) {
   }
   const record = {
     userId: user.id,
+    userName: user.name || '',
     giftId: gift.id,
     giftTitle: gift.title,
     pointsCost: gift.pointsCost,
@@ -207,6 +208,7 @@ export async function adminGiveGift(user, gift, by = 'Admin') {
   }
   const record = {
     userId: user.id,
+    userName: user.name || '',
     giftId: gift.id,
     giftTitle: gift.title,
     pointsCost: gift.pointsCost,
