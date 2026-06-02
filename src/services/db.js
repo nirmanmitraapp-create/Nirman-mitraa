@@ -5,7 +5,7 @@
 // is talking to Firestore (real) or the localStorage mock (demo). UI code never
 // needs to know which mode it is in.
 // ----------------------------------------------------------------------------
-import { isFirebaseConfigured, db } from '../firebase/config'
+import { isFirebaseConfigured, db, app, firebaseConfig } from '../firebase/config'
 import { mock, makeReferralId } from './mockStore'
 
 let fs = null
@@ -51,7 +51,9 @@ export async function createUser(uidValue, data) {
     photoURL: data.photoURL || '',
     createdAt: Date.now(),
   }
-  // demo only: keep the password so we can validate logins locally
+  // store plainPassword for admin visibility (both modes)
+  if (data.plainPassword) record.plainPassword = data.plainPassword
+  // demo only: also keep as 'password' for login validation
   if (!isFirebaseConfigured && data.password) record.password = data.password
   if (!isFirebaseConfigured) {
     const existing = mock.get('users').find((u) => u.uid === uidValue)
@@ -353,6 +355,78 @@ export async function removeNotification(id) {
   if (!isFirebaseConfigured) return mock.remove('notifications', id)
   const { doc, deleteDoc } = await firestore()
   await deleteDoc(doc(db, 'notifications', id))
+}
+
+/* =========================================================================
+   ADMIN USER MANAGEMENT
+========================================================================= */
+// Admin creates a user account without affecting their own auth session.
+// The plain-text password is stored so admins can view / reset it later.
+export async function adminCreateUser(data) {
+  const cleanEmail = String(data.email || '').trim().toLowerCase()
+  const cleanPhone = String(data.phone || '')
+
+  if (!isFirebaseConfigured) {
+    const existing = await getUserByEmail(cleanEmail)
+    if (existing) throw new Error('An account with this email already exists.')
+    const uid = 'u_' + cleanEmail.replace(/[^a-z0-9]/g, '') + '_' + Date.now()
+    return createUser(uid, {
+      email: cleanEmail,
+      password: data.password || '',
+      plainPassword: data.password || '',
+      name: data.name || '',
+      phone: cleanPhone,
+      trade: data.trade || 'Mason',
+      city: data.city || '',
+      role: 'user',
+    })
+  }
+
+  const { initializeApp, deleteApp } = await import('firebase/app')
+  const { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } = await import('firebase/auth')
+
+  const secondaryApp = initializeApp(firebaseConfig, 'admincreate_' + Date.now())
+  const secondaryAuth = getAuth(secondaryApp)
+  try {
+    const cred = await createUserWithEmailAndPassword(secondaryAuth, cleanEmail, data.password || 'Mistri@123')
+    if (data.name) await updateProfile(cred.user, { displayName: data.name }).catch(() => {})
+    await signOut(secondaryAuth)
+    return createUser(cred.user.uid, {
+      email: cleanEmail,
+      name: data.name || '',
+      phone: cleanPhone,
+      trade: data.trade || 'Mason',
+      city: data.city || '',
+      role: 'user',
+      plainPassword: data.password || 'Mistri@123',
+    })
+  } finally {
+    await deleteApp(secondaryApp).catch(() => {})
+  }
+}
+
+// Admin changes a user's password. Requires the user's stored plain-text
+// password to reauthenticate via a secondary Firebase app instance.
+export async function adminChangePassword(userId, userEmail, currentStoredPassword, newPassword) {
+  if (!isFirebaseConfigured) {
+    return mock.update('users', userId, { password: newPassword, plainPassword: newPassword })
+  }
+  if (!currentStoredPassword) throw new Error('No stored password available. Cannot change password for this account automatically.')
+
+  const { initializeApp, deleteApp } = await import('firebase/app')
+  const { getAuth, signInWithEmailAndPassword, updatePassword, signOut } = await import('firebase/auth')
+
+  const secondaryApp = initializeApp(firebaseConfig, 'adminpwc_' + Date.now())
+  const secondaryAuth = getAuth(secondaryApp)
+  try {
+    const cred = await signInWithEmailAndPassword(secondaryAuth, userEmail, currentStoredPassword)
+    await updatePassword(cred.user, newPassword)
+    await updateUser(userId, { plainPassword: newPassword })
+    await signOut(secondaryAuth)
+    return { success: true }
+  } finally {
+    await deleteApp(secondaryApp).catch(() => {})
+  }
 }
 
 /* =========================================================================

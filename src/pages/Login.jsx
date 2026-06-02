@@ -1,17 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, Lock, User, ShieldCheck, ArrowRight, Smartphone, Eye, EyeOff } from 'lucide-react'
+import { Mail, Lock, ShieldCheck, ArrowRight, Smartphone, Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+// import { GoogleIcon } from './GoogleIcon' // TODO: re-enable Google sign-in when needed
 import { Spinner } from '../components/ui/index.jsx'
 
-const TRADES = ['Mason', 'Plumber', 'Electrician', 'Contractor', 'Painter', 'Carpenter', 'Other']
-
 export default function Login() {
-  const { profile, isAdmin, isDemo, login, signUp, loginWithGoogle, demoLoginAs } = useAuth()
+  const { profile, isAdmin, isDemo, login, /* loginWithGoogle, */ demoLoginAs } = useAuth()
   const navigate = useNavigate()
 
-  const [mode, setMode] = useState('login') // login | signup
-  const [form, setForm] = useState({ name: '', email: '', password: '', trade: 'Mason', city: '' })
+  const [form, setForm] = useState({ email: '', password: '' })
   const [showPwd, setShowPwd] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
@@ -28,13 +26,9 @@ export default function Login() {
     setErr('')
     if (!/\S+@\S+\.\S+/.test(form.email)) return setErr('Enter a valid email address.')
     if (form.password.length < 6) return setErr('Password must be at least 6 characters.')
-    if (mode === 'signup' && !form.name.trim()) return setErr('Please enter your name.')
-
     setBusy(true)
     try {
-      if (mode === 'signup') await signUp(form)
-      else await login({ email: form.email, password: form.password })
-      // redirect handled by effect
+      await login({ email: form.email, password: form.password })
     } catch (e2) {
       setErr(friendly(e2))
     } finally {
@@ -42,17 +36,18 @@ export default function Login() {
     }
   }
 
-  const google = async () => {
-    setErr('')
-    setBusy(true)
-    try {
-      await loginWithGoogle()
-    } catch (e2) {
-      setErr(friendly(e2))
-    } finally {
-      setBusy(false)
-    }
-  }
+  // TODO: re-enable Google sign-in when needed
+  // const google = async () => {
+  //   setErr('')
+  //   setBusy(true)
+  //   try {
+  //     await loginWithGoogle()
+  //   } catch (e2) {
+  //     setErr(friendly(e2))
+  //   } finally {
+  //     setBusy(false)
+  //   }
+  // }
 
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
@@ -90,47 +85,35 @@ export default function Login() {
 
           {isDemo && (
             <div className="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-              <b>Demo mode</b> — no Firebase configured. Sign up with any email/password, or use a
-              quick login below. (Admin demo: <b>owner@shop.com</b> / <b>admin123</b>)
+              <b>Demo mode</b> — no Firebase configured. Use a quick login below or enter your credentials.
+              (Admin: <b>owner@shop.com</b> / <b>admin123</b>)
             </div>
           )}
 
           <div className="card p-6">
-            {/* Tabs */}
-            <div className="mb-5 grid grid-cols-2 gap-1 rounded-xl bg-slate-100 p-1">
-              {['login', 'signup'].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => { setMode(m); setErr('') }}
-                  className={`rounded-lg py-2 text-sm font-semibold transition ${
-                    mode === m ? 'bg-white text-brand-700 shadow-sm' : 'text-slate-500'
-                  }`}
-                >
-                  {m === 'login' ? 'Login' : 'Sign Up'}
-                </button>
-              ))}
+            <div className="mb-5">
+              <h2 className="text-xl font-bold text-slate-900">Welcome back</h2>
+              <p className="mt-1 text-sm text-slate-500">Sign in to your account</p>
             </div>
 
             <form onSubmit={submit}>
-              {mode === 'signup' && (
-                <>
-                  <label className="label">Full name</label>
-                  <Field icon={User}>
-                    <input className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="Your name" value={form.name} onChange={set('name')} />
-                  </Field>
-                </>
-              )}
-
-              <label className="label mt-4">Email</label>
+              <label className="label">Email</label>
               <Field icon={Mail}>
-                <input type="email" autoComplete="email" className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="you@example.com" value={form.email} onChange={set('email')} />
+                <input
+                  type="email"
+                  autoComplete="email"
+                  className="w-full bg-transparent py-2.5 text-sm outline-none"
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={set('email')}
+                />
               </Field>
 
               <label className="label mt-4">Password</label>
               <Field icon={Lock}>
                 <input
                   type={showPwd ? 'text' : 'password'}
-                  autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
+                  autoComplete="current-password"
                   className="w-full bg-transparent py-2.5 text-sm outline-none"
                   placeholder="••••••••"
                   value={form.password}
@@ -141,37 +124,21 @@ export default function Login() {
                 </button>
               </Field>
 
-              {mode === 'signup' && (
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="label">Trade</label>
-                    <select className="input" value={form.trade} onChange={set('trade')}>
-                      {TRADES.map((t) => <option key={t}>{t}</option>)}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="label">City</label>
-                    <input className="input" placeholder="City" value={form.city} onChange={set('city')} />
-                  </div>
-                </div>
-              )}
-
               {err && <p className="mt-3 text-sm text-rose-600">{err}</p>}
 
               <button type="submit" disabled={busy} className="btn-primary mt-5 w-full">
-                {busy ? <Spinner className="h-4 w-4" /> : mode === 'signup' ? 'Create account' : 'Login'}
+                {busy ? <Spinner className="h-4 w-4" /> : 'Login'}
                 {!busy && <ArrowRight className="h-4 w-4" />}
               </button>
             </form>
 
-            {/* divider */}
-            <div className="my-5 flex items-center gap-3 text-xs text-slate-400">
+            {/* TODO: re-enable Google sign-in when needed */}
+            {/* <div className="my-5 flex items-center gap-3 text-xs text-slate-400">
               <span className="h-px flex-1 bg-slate-200" /> OR <span className="h-px flex-1 bg-slate-200" />
             </div>
-
             <button onClick={google} disabled={busy} className="btn-ghost w-full border border-slate-200 bg-white hover:bg-slate-50">
               <GoogleIcon /> Continue with Google
-            </button>
+            </button> */}
           </div>
 
           {isDemo && (
@@ -198,27 +165,17 @@ function Field({ icon: Icon, children }) {
   )
 }
 
-function GoogleIcon() {
-  return (
-    <svg className="h-4 w-4" viewBox="0 0 48 48">
-      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.4 29.3 35 24 35c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 5.1 29.5 3 24 3 12.4 3 3 12.4 3 24s9.4 21 21 21c10.5 0 20-7.6 20-21 0-1.2-.1-2.3-.4-3.5z" />
-      <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 16 19 13 24 13c3.1 0 5.9 1.2 8 3.1l5.7-5.7C34.5 7.1 29.5 5 24 5 16 5 9.1 9.5 6.3 14.7z" transform="translate(0 -2)" />
-      <path fill="#4CAF50" d="M24 45c5.2 0 10-2 13.6-5.2l-6.3-5.2C29.2 36 26.7 37 24 37c-5.3 0-9.7-2.6-11.3-7l-6.5 5C9 41.4 15.9 45 24 45z" />
-      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.2-4.3 5.6l6.3 5.2C40.9 35.6 44 30.4 44 24c0-1.2-.1-2.3-.4-3.5z" />
-    </svg>
-  )
-}
+// TODO: re-enable when Google sign-in is needed
+// function GoogleIcon() { ... }
 
 function friendly(e) {
   const code = e?.code || ''
   const map = {
-    'auth/email-already-in-use': 'This email is already registered. Try logging in.',
     'auth/invalid-credential': 'Invalid email or password.',
     'auth/wrong-password': 'Incorrect password.',
     'auth/user-not-found': 'No account found with this email.',
-    'auth/weak-password': 'Password should be at least 6 characters.',
-    'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
-    'auth/operation-not-allowed': 'This sign-in method is not enabled in Firebase.',
+    // 'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+    // 'auth/operation-not-allowed': 'This sign-in method is not enabled.',
   }
   return map[code] || e?.message || 'Something went wrong. Please try again.'
 }

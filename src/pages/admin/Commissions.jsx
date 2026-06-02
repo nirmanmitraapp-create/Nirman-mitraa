@@ -1,5 +1,8 @@
 import { useEffect, useState, useMemo, useRef } from 'react'
-import { Search, Coins, ReceiptIndianRupee, Plus, UserCheck, AlertCircle, Check, ChevronDown } from 'lucide-react'
+import {
+  Search, Coins, ReceiptIndianRupee, Plus, UserCheck, AlertCircle, Check,
+  ChevronDown, Phone, IndianRupee, User,
+} from 'lucide-react'
 import { DateRangePicker } from '../../components/ui/DateRangePicker'
 import { listSales, listUsers, recordSale } from '../../services/db'
 import { useAuth } from '../../context/AuthContext'
@@ -7,7 +10,7 @@ import {
   SectionHeader, PageLoader, StatCard, EmptyState, Badge, Avatar,
   Pagination, usePaged, Modal, Spinner,
 } from '../../components/ui/index.jsx'
-import { num, dateStr } from '../../utils/format'
+import { num, inr, dateStr } from '../../utils/format'
 
 export default function Commissions() {
   const { profile } = useAuth()
@@ -18,7 +21,9 @@ export default function Commissions() {
 
   // add-commission modal
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ referralId: '', commissionPoints: '' })
+  const [form, setForm] = useState({
+    referralId: '', customerName: '', customerPhone: '', amount: '', commissionPoints: '',
+  })
   const [pick, setPick] = useState('')
   const [dropOpen, setDropOpen] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -52,7 +57,12 @@ export default function Commissions() {
     const fromMs = dateRange.from ? new Date(dateRange.from).setHours(0, 0, 0, 0) : null
     const toMs = dateRange.to ? new Date(dateRange.to).setHours(23, 59, 59, 999) : null
     return list.filter((s) => {
-      if (ql && !s.name?.toLowerCase().includes(ql) && !s.referralId?.toLowerCase().includes(ql)) return false
+      if (ql &&
+        !s.name?.toLowerCase().includes(ql) &&
+        !s.referralId?.toLowerCase().includes(ql) &&
+        !s.customerName?.toLowerCase().includes(ql) &&
+        !s.customerPhone?.includes(ql)
+      ) return false
       if (fromMs && s.createdAt < fromMs) return false
       if (toMs && s.createdAt > toMs) return false
       return true
@@ -69,9 +79,12 @@ export default function Commissions() {
         [u.name, u.referralId, u.trade, u.city].filter(Boolean).some((v) => v.toLowerCase().includes(pq)))
     : users
   const points = Number(form.commissionPoints) || 0
+  const saleAmt = Number(form.amount) || 0
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
   const openModal = () => {
-    setForm({ referralId: '', commissionPoints: '' })
+    setForm({ referralId: '', customerName: '', customerPhone: '', amount: '', commissionPoints: '' })
     setPick('')
     setDropOpen(false)
     setOpen(true)
@@ -96,6 +109,7 @@ export default function Commissions() {
   if (!sales) return <PageLoader />
 
   const totalPts = rows.reduce((a, s) => a + (s.commissionPoints || 0), 0)
+  const totalSales = rows.reduce((a, s) => a + (s.amount || 0), 0)
 
   return (
     <div className="space-y-5">
@@ -105,21 +119,18 @@ export default function Commissions() {
         action={<button onClick={openModal} className="btn-primary text-sm"><Plus className="h-4 w-4" /> Add Commission</button>}
       />
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         <StatCard icon={ReceiptIndianRupee} tone="blue" label="Transactions" value={num(rows.length)} />
-        <StatCard icon={Coins} tone="gold" label="Points issued" value={num(totalPts)} />
+        <StatCard icon={IndianRupee} tone="green" label="Total Sales" value={inr(totalSales)} />
+        <StatCard icon={Coins} tone="gold" label="Points Issued" value={num(totalPts)} />
       </div>
 
       <div className="relative">
         <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-        <input className="input pl-9" placeholder="Search by name or referral ID…" value={q} onChange={(e) => setQ(e.target.value)} />
+        <input className="input pl-9" placeholder="Search by referral ID, name, or customer…" value={q} onChange={(e) => setQ(e.target.value)} />
       </div>
 
-      <DateRangePicker
-        from={dateRange.from}
-        to={dateRange.to}
-        onChange={setDateRange}
-      />
+      <DateRangePicker from={dateRange.from} to={dateRange.to} onChange={setDateRange} />
 
       {rows.length === 0 ? (
         <EmptyState icon={ReceiptIndianRupee} title="No commissions found" subtitle="Add a commission to credit points to a Mistri." />
@@ -137,7 +148,17 @@ export default function Commissions() {
                   </div>
                   <span className="font-semibold text-emerald-600">+{num(s.commissionPoints)} pts</span>
                 </div>
-                <p className="mt-2 text-xs text-slate-400">{dateStr(s.createdAt)}</p>
+                {(s.customerName || s.customerPhone) && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-slate-500">
+                    <User className="h-3.5 w-3.5 shrink-0 text-slate-400" />
+                    <span className="truncate">{s.customerName || '—'}</span>
+                    {s.customerPhone && <span className="font-mono text-slate-400">· {s.customerPhone}</span>}
+                  </div>
+                )}
+                <div className="mt-1.5 flex items-center justify-between text-xs">
+                  <span className="text-slate-400">{dateStr(s.createdAt)}</span>
+                  {s.amount > 0 && <span className="font-medium text-slate-600">Sale: {inr(s.amount)}</span>}
+                </div>
               </div>
             ))}
           </div>
@@ -147,8 +168,11 @@ export default function Commissions() {
             <table className="w-full text-sm">
               <thead className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
                 <tr>
-                  <th className="px-4 py-3 font-medium">Referring person</th>
+                  <th className="px-4 py-3 font-medium">Referring Person</th>
                   <th className="px-4 py-3 font-medium">Referral ID</th>
+                  <th className="px-4 py-3 font-medium">Customer</th>
+                  <th className="px-4 py-3 font-medium">Mobile</th>
+                  <th className="px-4 py-3 text-right font-medium">Sale Amt</th>
                   <th className="px-4 py-3 text-right font-medium">Points</th>
                   <th className="px-4 py-3 text-right font-medium">Date</th>
                 </tr>
@@ -163,6 +187,9 @@ export default function Commissions() {
                       </div>
                     </td>
                     <td className="px-4 py-3"><Badge tone="brand">{s.referralId || '—'}</Badge></td>
+                    <td className="px-4 py-3 text-slate-700">{s.customerName || <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3 font-mono text-slate-500">{s.customerPhone || <span className="text-slate-300">—</span>}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{s.amount > 0 ? inr(s.amount) : <span className="text-slate-300">—</span>}</td>
                     <td className="px-4 py-3 text-right font-semibold text-emerald-600">+{num(s.commissionPoints)}</td>
                     <td className="px-4 py-3 text-right text-slate-400">{dateStr(s.createdAt)}</td>
                   </tr>
@@ -177,7 +204,7 @@ export default function Commissions() {
 
       {/* Add commission modal */}
       <Modal open={open} onClose={() => setOpen(false)} title="Add Commission" maxWidth="max-w-2xl" bodyClassName="overflow-visible">
-        <form onSubmit={submit} className="space-y-5">
+        <form onSubmit={submit} className="space-y-4">
           {/* Referral picker */}
           <div>
             <label className="label">Referral ID (Mistri / Contractor)</label>
@@ -221,10 +248,10 @@ export default function Commissions() {
                 </button>
 
                 {dropOpen && (
-                  <div className="absolute left-0 right-0 top-full z-30 mt-1.5 max-h-96 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
+                  <div className="absolute left-0 right-0 top-full z-30 mt-1.5 max-h-72 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-xl">
                     {candidates.length === 0 ? (
                       <div className="flex items-center gap-2 px-3 py-3 text-sm text-slate-500">
-                        <AlertCircle className="h-4 w-4 shrink-0" /> No referrer found{pq ? ` for “${pick}”` : ''}.
+                        <AlertCircle className="h-4 w-4 shrink-0" /> No referrer found{pq ? ` for "${pick}"` : ''}.
                       </div>
                     ) : (
                       candidates.map((u) => (
@@ -250,9 +277,58 @@ export default function Commissions() {
             )}
           </div>
 
+          {/* Customer info */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label className="label">Customer Name</label>
+              <div className="relative">
+                <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  className="input px-9"
+                  type="text"
+                  placeholder="Customer full name"
+                  value={form.customerName}
+                  onChange={set('customerName')}
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="label">Customer Mobile No.</label>
+              <div className="relative">
+                <Phone className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <input
+                  className="input px-9"
+                  type="tel"
+                  placeholder="10-digit mobile number"
+                  value={form.customerPhone}
+                  onChange={set('customerPhone')}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sale amount */}
+          <div>
+            <label className="label">Sale Amount (₹)</label>
+            <div className="relative">
+              <IndianRupee className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <input
+                className="input px-9"
+                type="number"
+                min="0"
+                placeholder="0"
+                value={form.amount}
+                onChange={set('amount')}
+                required
+              />
+            </div>
+          </div>
+
           {/* Commission points */}
           <div>
-            <label className="label">Commission points</label>
+            <label className="label">Commission Points</label>
             <div className="relative">
               <Coins className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
               <input
@@ -260,17 +336,29 @@ export default function Commissions() {
                 type="number"
                 min="0"
                 value={form.commissionPoints}
-                onChange={(e) => setForm((f) => ({ ...f, commissionPoints: e.target.value }))}
+                onChange={set('commissionPoints')}
                 placeholder="0"
                 required
               />
             </div>
           </div>
 
-          {points > 0 && matched && (
-            <div className="flex items-center justify-between rounded-xl bg-slate-50 p-3 text-sm">
-              <span className="text-slate-500">Crediting to {matched.name}</span>
-              <span className="font-semibold text-emerald-600">+{num(points)} pts</span>
+          {/* Preview */}
+          {(points > 0 || saleAmt > 0) && matched && (
+            <div className="space-y-1 rounded-xl bg-slate-50 p-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-slate-500">Crediting to <b>{matched.name}</b></span>
+                <span className="font-semibold text-emerald-600">+{num(points)} pts</span>
+              </div>
+              {(form.customerName || form.customerPhone || saleAmt > 0) && (
+                <div className="flex items-center justify-between text-xs text-slate-400">
+                  <span>
+                    {form.customerName || 'Customer'}
+                    {form.customerPhone ? ` · ${form.customerPhone}` : ''}
+                  </span>
+                  {saleAmt > 0 && <span className="font-medium text-slate-600">Sale: {inr(saleAmt)}</span>}
+                </div>
+              )}
             </div>
           )}
 
