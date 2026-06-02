@@ -72,6 +72,12 @@ export async function updateUser(id, patch) {
   return { id, ...patch }
 }
 
+export async function deleteUser(id) {
+  if (!isFirebaseConfigured) return mock.remove('users', id)
+  const { doc, deleteDoc } = await firestore()
+  await deleteDoc(doc(db, 'users', id))
+}
+
 export async function listUsers() {
   if (!isFirebaseConfigured)
     return [...mock.get('users')].sort((a, b) => b.createdAt - a.createdAt)

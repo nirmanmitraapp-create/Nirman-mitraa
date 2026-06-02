@@ -14,6 +14,7 @@ import Notifications from './pages/user/Notifications'
 import AdminLayout from './components/layout/AdminLayout'
 import AdminDashboard from './pages/admin/AdminDashboard'
 import ManageUsers from './pages/admin/ManageUsers'
+import EditUser from './pages/admin/EditUser'
 import Commissions from './pages/admin/Commissions'
 import ManageGifts from './pages/admin/ManageGifts'
 import AdminNotifications from './pages/admin/AdminNotifications'
@@ -51,6 +52,7 @@ export default function App() {
       >
         <Route index element={<AdminDashboard />} />
         <Route path="users" element={<ManageUsers />} />
+        <Route path="users/:userId" element={<EditUser />} />
         <Route path="commissions" element={<Commissions />} />
         <Route path="gifts" element={<ManageGifts />} />
         <Route path="notifications" element={<AdminNotifications />} />

@@ -1,36 +1,36 @@
 import { useEffect, useState } from 'react'
-import {
-  Search, Plus, Minus, UserPlus, Eye, EyeOff, Lock, KeyRound,
-  Mail, Phone, User, X, Save,
-} from 'lucide-react'
-import { updateUser, getLeaderboard, adminCreateUser, adminChangePassword } from '../../services/db'
+import { useNavigate } from 'react-router-dom'
+import { Search, UserPlus, Eye, EyeOff, Lock, Mail, Phone, User, ChevronUp, ChevronDown, X, SlidersHorizontal } from 'lucide-react'
+import { getLeaderboard, adminCreateUser } from '../../services/db'
 import {
   SectionHeader, PageLoader, Avatar, Modal, Badge, Pagination, usePaged, Spinner,
 } from '../../components/ui/index.jsx'
 import { num, inr, dateStr } from '../../utils/format'
 
 const TRADES = ['Mason', 'Plumber', 'Electrician', 'Contractor', 'Painter', 'Carpenter', 'Other']
+const SORT_OPTIONS = [
+  { label: 'Name (A–Z)',       key: 'name',         dir: 'asc'  },
+  { label: 'Name (Z–A)',       key: 'name',         dir: 'desc' },
+  { label: 'Points ↑',         key: 'points',       dir: 'asc'  },
+  { label: 'Points ↓',         key: 'points',       dir: 'desc' },
+  { label: 'Referrals ↑',      key: 'referralCount', dir: 'asc'  },
+  { label: 'Referrals ↓',      key: 'referralCount', dir: 'desc' },
+  { label: 'Joined (newest)',   key: 'createdAt',    dir: 'desc' },
+  { label: 'Joined (oldest)',   key: 'createdAt',    dir: 'asc'  },
+]
 
 export default function ManageUsers() {
+  const navigate = useNavigate()
   const [rows, setRows] = useState(null)
-  const [q, setQ] = useState('')
 
-  // ---- edit drawer (profile + points + security) ----
-  const [editUser, setEditUser] = useState(null)
-  const [editForm, setEditForm] = useState({ name: '', phone: '', trade: 'Mason', city: '' })
-  const [profileBusy, setProfileBusy] = useState(false)
-  const [profileErr, setProfileErr] = useState('')
-  const [profileMsg, setProfileMsg] = useState('')
-  const [delta, setDelta] = useState('')
-  const [pointsBusy, setPointsBusy] = useState(false)
-  const [showStoredPwd, setShowStoredPwd] = useState(false)
-  const [newPwd, setNewPwd] = useState('')
-  const [showNewPwd, setShowNewPwd] = useState(false)
-  const [pwdBusy, setPwdBusy] = useState(false)
-  const [pwdErr, setPwdErr] = useState('')
-  const [pwdMsg, setPwdMsg] = useState('')
+  // filters
+  const [q, setQ]             = useState('')
+  const [tradeFilt, setTradeFilt] = useState('')
+  const [sortKey, setSortKey] = useState('name')
+  const [sortDir, setSortDir] = useState('asc')
+  const [showFilters, setShowFilters] = useState(false)
 
-  // ---- create user modal ----
+  // create modal
   const [createOpen, setCreateOpen] = useState(false)
   const [createForm, setCreateForm] = useState({ name: '', email: '', phone: '', trade: 'Mason', city: '', password: '' })
   const [showCreatePwd, setShowCreatePwd] = useState(false)
@@ -40,81 +40,31 @@ export default function ManageUsers() {
   const load = () => getLeaderboard().then(setRows)
   useEffect(() => { load() }, [])
 
-  const filtered = (rows || []).filter(
-    (u) =>
-      u.name?.toLowerCase().includes(q.toLowerCase()) ||
-      u.referralId?.toLowerCase().includes(q.toLowerCase()) ||
-      u.phone?.includes(q),
-  )
+  const activeFilters = [q, tradeFilt].filter(Boolean).length
+
+  const filtered = (rows || [])
+    .filter((u) => {
+      const matchQ = !q || (
+        u.name?.toLowerCase().includes(q.toLowerCase()) ||
+        u.referralId?.toLowerCase().includes(q.toLowerCase()) ||
+        u.phone?.includes(q)
+      )
+      const matchTrade = !tradeFilt || u.trade === tradeFilt
+      return matchQ && matchTrade
+    })
+    .sort((a, b) => {
+      const av = a[sortKey] ?? ''
+      const bv = b[sortKey] ?? ''
+      const cmp = typeof av === 'number'
+        ? av - bv
+        : String(av).localeCompare(String(bv))
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+
   const paged = usePaged(filtered, 10)
 
   if (!rows) return <PageLoader />
 
-  // ---- edit drawer handlers ----
-  const openEdit = (u) => {
-    setEditUser(u)
-    setEditForm({ name: u.name || '', phone: u.phone || '', trade: u.trade || 'Mason', city: u.city || '' })
-    setProfileErr(''); setProfileMsg('')
-    setDelta('')
-    setNewPwd(''); setPwdErr(''); setPwdMsg('')
-    setShowStoredPwd(false); setShowNewPwd(false)
-  }
-
-  const closeEdit = () => { setEditUser(null); load() }
-
-  const saveProfile = async () => {
-    setProfileErr(''); setProfileMsg('')
-    if (!editForm.name.trim()) return setProfileErr('Name cannot be empty.')
-    setProfileBusy(true)
-    try {
-      await updateUser(editUser.id, {
-        name: editForm.name.trim(),
-        phone: editForm.phone.trim(),
-        trade: editForm.trade,
-        city: editForm.city.trim(),
-      })
-      setProfileMsg('Profile updated successfully.')
-      setEditUser((u) => ({ ...u, name: editForm.name.trim(), phone: editForm.phone.trim(), trade: editForm.trade, city: editForm.city.trim() }))
-    } catch (err) {
-      setProfileErr(err.message || 'Failed to update profile.')
-    } finally {
-      setProfileBusy(false)
-    }
-  }
-
-  const adjustPoints = async (sign) => {
-    const amt = sign * Math.abs(Number(delta) || 0)
-    if (!amt) return
-    setPointsBusy(true)
-    try {
-      const newPoints = Math.max(0, (editUser.points || 0) + amt)
-      const newEarned = amt > 0 ? (editUser.totalEarned || 0) + amt : editUser.totalEarned
-      await updateUser(editUser.id, { points: newPoints, totalEarned: newEarned })
-      setEditUser((u) => ({ ...u, points: newPoints, totalEarned: newEarned }))
-      setDelta('')
-    } finally {
-      setPointsBusy(false)
-    }
-  }
-
-  const submitPwdChange = async () => {
-    setPwdErr(''); setPwdMsg('')
-    if (newPwd.length < 6) return setPwdErr('Password must be at least 6 characters.')
-    setPwdBusy(true)
-    try {
-      const stored = editUser.plainPassword || editUser.password || ''
-      await adminChangePassword(editUser.id, editUser.email, stored, newPwd)
-      setPwdMsg('Password changed successfully.')
-      setNewPwd('')
-      setEditUser((u) => ({ ...u, plainPassword: newPwd }))
-    } catch (err) {
-      setPwdErr(err.message || 'Failed to change password.')
-    } finally {
-      setPwdBusy(false)
-    }
-  }
-
-  // ---- create user handlers ----
   const setField = (k) => (e) => setCreateForm((f) => ({ ...f, [k]: e.target.value }))
 
   const openCreate = () => {
@@ -138,8 +88,25 @@ export default function ManageUsers() {
     }
   }
 
+  const handleSortChange = (e) => {
+    const opt = SORT_OPTIONS[e.target.value]
+    setSortKey(opt.key)
+    setSortDir(opt.dir)
+  }
+
+  const clearFilters = () => { setQ(''); setTradeFilt('') }
+
+  const toggleColumnSort = (key) => {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <SectionHeader
         title="User Management"
         subtitle={`${rows.length} registered Mistris & Contractors`}
@@ -150,257 +117,168 @@ export default function ManageUsers() {
         }
       />
 
-      <div className="relative">
-        <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-        <input className="input pl-9" placeholder="Search by name, referral ID, or phone…" value={q} onChange={(e) => setQ(e.target.value)} />
-      </div>
-
-      {/* Mobile cards */}
-      <div className="space-y-3 lg:hidden">
-        {paged.pageItems.map((u) => (
-          <div key={u.id} className="card p-4">
-            <div className="flex items-center gap-3">
-              <Avatar name={u.name} src={u.photoURL} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold text-slate-900">{u.name}</p>
-                <p className="truncate text-xs text-slate-500">{u.phone}</p>
-              </div>
-              <Badge tone="brand">{u.referralId}</Badge>
-            </div>
-            <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-              <Stat label="Points" value={num(u.points)} />
-              <Stat label="Referrals" value={num(u.referralCount)} />
-              <Stat label="Sales" value={inr(u.salesTotal)} />
-            </div>
-            <button onClick={() => openEdit(u)} className="btn-ghost mt-3 w-full text-xs">Edit User</button>
+      {/* ── Search + Filter bar ── */}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <input
+              className="input pl-9"
+              placeholder="Search by name, referral ID, or phone…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+            />
+            {q && (
+              <button
+                onClick={() => setQ('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-        ))}
+          <button
+            onClick={() => setShowFilters((s) => !s)}
+            className={`relative flex items-center gap-2 rounded-xl border px-3 py-2.5 text-sm font-medium transition ${
+              showFilters || activeFilters > 0
+                ? 'border-brand-500 bg-brand-50 text-brand-700'
+                : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            <span className="hidden sm:inline">Filters</span>
+            {activeFilters > 0 && (
+              <span className="grid h-4 w-4 place-items-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                {activeFilters}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {showFilters && (
+          <div className="card flex flex-wrap items-end gap-3 p-4">
+            <div className="min-w-40 flex-1">
+              <label className="label">Trade</label>
+              <select
+                className="input"
+                value={tradeFilt}
+                onChange={(e) => setTradeFilt(e.target.value)}
+              >
+                <option value="">All Trades</option>
+                {TRADES.map((t) => <option key={t}>{t}</option>)}
+              </select>
+            </div>
+
+            <div className="min-w-45 flex-1">
+              <label className="label">Sort by</label>
+              <select
+                className="input"
+                value={SORT_OPTIONS.findIndex((o) => o.key === sortKey && o.dir === sortDir)}
+                onChange={handleSortChange}
+              >
+                {SORT_OPTIONS.map((o, i) => (
+                  <option key={i} value={i}>{o.label}</option>
+                ))}
+              </select>
+            </div>
+
+            {activeFilters > 0 && (
+              <button
+                onClick={clearFilters}
+                className="flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-500 hover:bg-slate-50"
+              >
+                <X className="h-3.5 w-3.5" /> Clear filters
+              </button>
+            )}
+          </div>
+        )}
+
+        {filtered.length !== rows.length && (
+          <p className="text-xs text-slate-500">
+            Showing <b className="text-slate-700">{filtered.length}</b> of {rows.length} users
+            {activeFilters > 0 && (
+              <button onClick={clearFilters} className="ml-2 text-brand-600 hover:underline">
+                Clear filters
+              </button>
+            )}
+          </p>
+        )}
       </div>
 
-      {/* Desktop table */}
-      <div className="card hidden overflow-x-auto lg:block">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-100 text-left text-xs uppercase text-slate-400">
-            <tr>
-              <th className="px-4 py-3 font-medium">User</th>
-              <th className="px-4 py-3 font-medium">Referral ID</th>
-              <th className="px-4 py-3 font-medium">Trade</th>
-              <th className="px-4 py-3 text-right font-medium">Referrals</th>
-              <th className="px-4 py-3 text-right font-medium">Sales</th>
-              <th className="px-4 py-3 text-right font-medium">Points</th>
-              <th className="px-4 py-3 text-right font-medium">Joined</th>
-              <th className="px-4 py-3"></th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {paged.pageItems.map((u) => (
-              <tr key={u.id} className={`hover:bg-slate-50 ${editUser?.id === u.id ? 'bg-brand-50' : ''}`}>
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    <Avatar name={u.name} src={u.photoURL} size="h-9 w-9" />
-                    <div>
-                      <p className="font-medium text-slate-900">{u.name}</p>
-                      <p className="text-xs text-slate-400">{u.phone}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3"><Badge tone="brand">{u.referralId}</Badge></td>
-                <td className="px-4 py-3 text-slate-500">{u.trade}</td>
-                <td className="px-4 py-3 text-right">{num(u.referralCount)}</td>
-                <td className="px-4 py-3 text-right">{inr(u.salesTotal)}</td>
-                <td className="px-4 py-3 text-right font-semibold text-amber-600">{num(u.points)}</td>
-                <td className="px-4 py-3 text-right text-slate-400">{dateStr(u.createdAt)}</td>
-                <td className="px-4 py-3 text-right">
-                  <button onClick={() => openEdit(u)} className="btn-ghost px-3 py-1.5 text-xs">Edit</button>
-                </td>
+      {/* ── Table (all screen sizes, horizontal scroll on mobile) ── */}
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-160 text-sm">
+            <thead className="border-b border-slate-100 bg-slate-50 text-left text-xs text-slate-500">
+              <tr>
+                <th className="px-4 py-3 font-medium">
+                  <SortHeader label="User" colKey="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleColumnSort} />
+                </th>
+                <th className="px-4 py-3 font-medium">Referral ID</th>
+                <th className="px-4 py-3 font-medium">Trade</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  <SortHeader label="Referrals" colKey="referralCount" sortKey={sortKey} sortDir={sortDir} onSort={toggleColumnSort} right />
+                </th>
+                <th className="px-4 py-3 text-right font-medium">Sales</th>
+                <th className="px-4 py-3 text-right font-medium">
+                  <SortHeader label="Points" colKey="points" sortKey={sortKey} sortDir={sortDir} onSort={toggleColumnSort} right />
+                </th>
+                <th className="px-4 py-3 text-right font-medium">
+                  <SortHeader label="Joined" colKey="createdAt" sortKey={sortKey} sortDir={sortDir} onSort={toggleColumnSort} right />
+                </th>
+                <th className="px-4 py-3" />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-slate-50">
+              {paged.pageItems.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
+                    No users match your filters.
+                  </td>
+                </tr>
+              ) : (
+                paged.pageItems.map((u) => (
+                  <tr
+                    key={u.id}
+                    className="cursor-pointer hover:bg-slate-50 transition-colors"
+                    onClick={() => navigate(`/admin/users/${u.id}`)}
+                  >
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <Avatar name={u.name} src={u.photoURL} size="h-9 w-9" />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-slate-900">{u.name}</p>
+                          <p className="truncate text-xs text-slate-400">{u.phone || u.email}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge tone="brand">{u.referralId}</Badge>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500">{u.trade || '—'}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{num(u.referralCount)}</td>
+                    <td className="px-4 py-3 text-right tabular-nums">{inr(u.salesTotal)}</td>
+                    <td className="px-4 py-3 text-right font-semibold tabular-nums text-amber-600">{num(u.points)}</td>
+                    <td className="px-4 py-3 text-right text-slate-400 tabular-nums">{dateStr(u.createdAt)}</td>
+                    <td className="px-4 py-3 text-right">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/users/${u.id}`) }}
+                        className="btn-ghost px-3 py-1.5 text-xs"
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <Pagination {...paged} onChange={paged.setPage} label="users" />
 
-      {/* ================================================================
-          EDIT DRAWER — slides in from the right; list stays visible
-          ================================================================ */}
-      {editUser && (
-        <>
-          {/* light backdrop — list visible behind it */}
-          <div className="fixed inset-0 z-40 bg-black/25" onClick={closeEdit} />
-
-          {/* panel */}
-          <div className="fixed inset-y-0 right-0 z-50 flex w-full max-w-115 animate-[slideInRight_.22s_ease-out] flex-col overflow-y-auto bg-white shadow-2xl">
-
-            {/* header */}
-            <div className="flex shrink-0 items-center gap-3 border-b border-slate-100 px-5 py-4">
-              <Avatar name={editUser.name} src={editUser.photoURL} size="h-10 w-10" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-bold text-slate-900">{editUser.name}</p>
-                <p className="truncate text-xs text-slate-500">{editUser.email}</p>
-              </div>
-              <button onClick={closeEdit} className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            <div className="flex-1 space-y-6 overflow-y-auto p-5">
-
-              {/* ── Section 1: Profile Info ── */}
-              <section>
-                <DrawerSection>Profile Info</DrawerSection>
-                <div className="space-y-3">
-                  <div>
-                    <label className="label">Full Name</label>
-                    <FormField icon={User}>
-                      <input
-                        className="w-full bg-transparent py-2.5 text-sm outline-none"
-                        placeholder="Full name"
-                        value={editForm.name}
-                        onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
-                      />
-                    </FormField>
-                  </div>
-                  <div>
-                    <label className="label">Phone Number</label>
-                    <FormField icon={Phone}>
-                      <input
-                        type="tel"
-                        className="w-full bg-transparent py-2.5 text-sm outline-none"
-                        placeholder="10-digit mobile"
-                        value={editForm.phone}
-                        onChange={(e) => setEditForm((f) => ({ ...f, phone: e.target.value }))}
-                      />
-                    </FormField>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="label">Trade</label>
-                      <select
-                        className="input"
-                        value={editForm.trade}
-                        onChange={(e) => setEditForm((f) => ({ ...f, trade: e.target.value }))}
-                      >
-                        {TRADES.map((t) => <option key={t}>{t}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="label">City</label>
-                      <input
-                        className="input"
-                        placeholder="City"
-                        value={editForm.city}
-                        onChange={(e) => setEditForm((f) => ({ ...f, city: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                  {profileErr && <p className="text-sm text-rose-600">{profileErr}</p>}
-                  {profileMsg && <p className="text-sm text-emerald-600">{profileMsg}</p>}
-                  <button onClick={saveProfile} disabled={profileBusy} className="btn-primary w-full">
-                    {profileBusy ? <Spinner className="h-4 w-4" /> : <Save className="h-4 w-4" />}
-                    Save Profile
-                  </button>
-                </div>
-              </section>
-
-              <hr className="border-slate-100" />
-
-              {/* ── Section 2: Adjust Points ── */}
-              <section>
-                <DrawerSection>Adjust Points</DrawerSection>
-                <div className="mb-3 flex items-center justify-between rounded-xl bg-amber-50 px-4 py-3">
-                  <span className="text-sm text-slate-600">Current balance</span>
-                  <span className="font-bold text-amber-600">{num(editUser.points)} pts</span>
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    className="input flex-1"
-                    type="number"
-                    min="0"
-                    placeholder="Points amount"
-                    value={delta}
-                    onChange={(e) => setDelta(e.target.value)}
-                  />
-                  <button onClick={() => adjustPoints(1)} disabled={pointsBusy || !delta} className="btn-primary px-4">
-                    <Plus className="h-4 w-4" />
-                  </button>
-                  <button onClick={() => adjustPoints(-1)} disabled={pointsBusy || !delta} className="btn-danger px-4">
-                    <Minus className="h-4 w-4" />
-                  </button>
-                </div>
-              </section>
-
-              <hr className="border-slate-100" />
-
-              {/* ── Section 3: Security ── */}
-              <section>
-                <DrawerSection>Security</DrawerSection>
-                <div className="space-y-3">
-                  <div>
-                    <label className="label">Stored Password</label>
-                    <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                      <Lock className="h-4 w-4 shrink-0 text-slate-400" />
-                      <span className="flex-1 font-mono text-sm tracking-wider">
-                        {showStoredPwd
-                          ? (editUser.plainPassword || editUser.password || '—')
-                          : '•'.repeat(Math.max(8, (editUser.plainPassword || editUser.password || '').length))}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setShowStoredPwd((s) => !s)}
-                        className="text-slate-400 hover:text-slate-600"
-                      >
-                        {showStoredPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                    {!editUser.plainPassword && !editUser.password && (
-                      <p className="mt-1 text-xs text-slate-400">
-                        No stored password — Google sign-in or pre-existing account.
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <label className="label">Set New Password</label>
-                    <FormField icon={Lock}>
-                      <input
-                        type={showNewPwd ? 'text' : 'password'}
-                        className="w-full bg-transparent py-2.5 text-sm outline-none"
-                        placeholder="New password (min 6 chars)"
-                        value={newPwd}
-                        onChange={(e) => setNewPwd(e.target.value)}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowNewPwd((s) => !s)}
-                        className="text-slate-400 hover:text-slate-600"
-                      >
-                        {showNewPwd ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </FormField>
-                  </div>
-                  {pwdErr && <p className="text-sm text-rose-600">{pwdErr}</p>}
-                  {pwdMsg && <p className="text-sm text-emerald-600">{pwdMsg}</p>}
-                  <button
-                    onClick={submitPwdChange}
-                    disabled={pwdBusy || !newPwd}
-                    className="btn-primary w-full"
-                  >
-                    {pwdBusy ? <Spinner className="h-4 w-4" /> : <KeyRound className="h-4 w-4" />}
-                    Change Password
-                  </button>
-                </div>
-              </section>
-
-            </div>
-          </div>
-
-          <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-        </>
-      )}
-
-      {/* ================================================================
-          CREATE USER MODAL
-          ================================================================ */}
+      {/* ── Create user modal ── */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create User Account" maxWidth="max-w-lg">
         <form onSubmit={submitCreate} className="space-y-4">
           <div>
@@ -460,17 +338,20 @@ export default function ManageUsers() {
   )
 }
 
-function Stat({ label, value }) {
+function SortHeader({ label, colKey, sortKey, sortDir, onSort, right = false }) {
+  const active = sortKey === colKey
   return (
-    <div className="rounded-lg bg-slate-50 p-2">
-      <p className="font-bold text-slate-900">{value}</p>
-      <p className="text-slate-400">{label}</p>
-    </div>
+    <button
+      onClick={() => onSort(colKey)}
+      className={`flex items-center gap-1 font-medium uppercase tracking-wide transition hover:text-slate-700 ${right ? 'ml-auto' : ''} ${active ? 'text-brand-700' : 'text-slate-400'}`}
+    >
+      {label}
+      <span className="flex flex-col">
+        <ChevronUp   className={`-mb-1 h-2.5 w-2.5 ${active && sortDir === 'asc'  ? 'text-brand-600' : 'text-slate-300'}`} />
+        <ChevronDown className={`h-2.5 w-2.5        ${active && sortDir === 'desc' ? 'text-brand-600' : 'text-slate-300'}`} />
+      </span>
+    </button>
   )
-}
-
-function DrawerSection({ children }) {
-  return <h4 className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">{children}</h4>
 }
 
 function FormField({ icon: Icon, children }) {
