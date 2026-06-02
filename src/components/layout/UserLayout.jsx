@@ -3,7 +3,7 @@ import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, Wallet, Gift, Trophy, User, LogOut, Bell } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
 import { subscribeNotificationsForUser } from '../../services/db'
-import { initMessagingForUser } from '../../firebase/messaging'
+import { initMessagingForUser, onForegroundMessage } from '../../firebase/messaging'
 import { Avatar } from '../ui/index.jsx'
 
 const nav = [
@@ -48,13 +48,24 @@ export default function UserLayout() {
     if (profile?.id) initMessagingForUser(profile.id)
   }, [profile?.id])
 
-  // Live notifications: badge + browser notification + in-app toast on new ones.
+  // Consume FCM foreground messages with a no-op so Firebase does NOT fall
+  // through to the service worker and show a second native OS notification.
+  // The Firestore onSnapshot below already handles the in-app toast.
+  useEffect(() => {
+    let unsubFcm = () => {}
+    onForegroundMessage(() => {}).then((fn) => { unsubFcm = fn ?? (() => {}) })
+    return () => unsubFcm()
+  }, [])
+
+  // Live notifications: badge + in-app toast on new ones.
   useEffect(() => {
     if (!profile?.id) return
-    let unsub = () => {}
+    let cleanup = () => {}
+    let cancelled = false
     const lastSeen = Number(localStorage.getItem(SEEN_KEY) || 0)
 
     subscribeNotificationsForUser(profile.id, (items) => {
+      if (cancelled) return
       // first snapshot = baseline; just count unread since lastSeen
       if (knownIds.current === null) {
         knownIds.current = new Set(items.map((n) => n.id))
@@ -69,9 +80,15 @@ export default function UserLayout() {
         playNotificationSound()
       })
       if (fresh.length) setTimeout(() => setToast(null), 6000)
-    }).then((fn) => { unsub = fn })
+    }).then((fn) => {
+      if (cancelled) fn()  // effect already cleaned up — unsubscribe immediately
+      else cleanup = fn
+    })
 
-    return () => unsub()
+    return () => {
+      cancelled = true
+      cleanup()
+    }
   }, [profile?.id])
 
   const openNotifications = () => {
