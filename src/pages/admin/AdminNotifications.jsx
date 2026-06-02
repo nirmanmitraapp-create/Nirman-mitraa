@@ -243,9 +243,8 @@ export default function AdminNotifications() {
           </form>
         </div>
 
-        {/* ── History panel ── */}
-        <div className="space-y-3 lg:col-span-3">
-          {/* Header + filters */}
+        {/* ── History panel ── (future feature — commented out for now) */}
+        {/* <div className="space-y-3 lg:col-span-3">
           <div className="card p-4 space-y-3">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-2">
@@ -266,7 +265,6 @@ export default function AdminNotifications() {
               </button>
             </div>
 
-            {/* Search */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
@@ -285,7 +283,6 @@ export default function AdminNotifications() {
               )}
             </div>
 
-            {/* Audience filter chips */}
             <div className="flex items-center gap-2">
               <Filter className="h-3.5 w-3.5 shrink-0 text-slate-400" />
               {[
@@ -308,7 +305,6 @@ export default function AdminNotifications() {
             </div>
           </div>
 
-          {/* Notification list */}
           {paged.pageItems.length === 0 ? (
             <EmptyState icon={Bell} title="No alerts found" subtitle="Try adjusting your filters or send a new notification." />
           ) : (
@@ -329,7 +325,7 @@ export default function AdminNotifications() {
               <Pagination {...paged} onChange={paged.setPage} label="alerts" />
             </div>
           )}
-        </div>
+        </div> */}
       </div>
     </div>
   )
