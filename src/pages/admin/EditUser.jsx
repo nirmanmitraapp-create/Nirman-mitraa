@@ -1,12 +1,13 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ChevronLeft, Save, User, Phone, Lock, Eye, EyeOff,
   Trash2, AlertTriangle, MapPin, Briefcase, Coins, Shield,
-  KeyRound, Star, TrendingUp, TrendingDown, BadgeCheck,
+  KeyRound, Star, TrendingUp, TrendingDown, BadgeCheck, Camera, Loader2,
 } from 'lucide-react'
 import { getUserByUid, updateUser, adminChangePassword, deleteUser } from '../../services/db'
 import { Avatar, PageLoader, Spinner } from '../../components/ui/index.jsx'
+import { uploadImage, isCloudinaryConfigured } from '../../services/cloudinary'
 import { num } from '../../utils/format'
 
 const TRADES = ['Mason', 'Plumber', 'Electrician', 'Contractor', 'Painter', 'Carpenter', 'Other']
@@ -18,14 +19,17 @@ export default function EditUser() {
   const [user, setUser] = useState(null)
   const [loading, setLoading] = useState(true)
 
-  const [name, setName]     = useState('')
-  const [phone, setPhone]   = useState('')
-  const [trade, setTrade]   = useState('Mason')
-  const [city, setCity]     = useState('')
+  const [name, setName]       = useState('')
+  const [phone, setPhone]     = useState('')
+  const [trade, setTrade]     = useState('Mason')
+  const [city, setCity]       = useState('')
+  const [photoURL, setPhotoURL] = useState('')
   const [pointsDelta, setPointsDelta] = useState('')
-  const [newPwd, setNewPwd] = useState('')
+  const [newPwd, setNewPwd]   = useState('')
   const [showStored, setShowStored] = useState(false)
   const [showNew, setShowNew]       = useState(false)
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const photoRef = useRef(null)
 
   const [saving, setSaving] = useState(false)
   const [err, setErr]       = useState('')
@@ -42,9 +46,26 @@ export default function EditUser() {
         setPhone(u.phone || '')
         setTrade(u.trade || 'Mason')
         setCity(u.city || '')
+        setPhotoURL(u.photoURL || '')
       })
       .finally(() => setLoading(false))
   }, [userId, navigate])
+
+  const onPickPhoto = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setErr('')
+    setPhotoUploading(true)
+    try {
+      const url = await uploadImage(file)
+      setPhotoURL(url)
+    } catch (err) {
+      setErr(err.message)
+    } finally {
+      setPhotoUploading(false)
+    }
+  }
 
   if (loading) return <PageLoader />
   if (!user)   return null
@@ -64,6 +85,7 @@ export default function EditUser() {
         phone: phone.trim(),
         trade,
         city: city.trim(),
+        photoURL,
       })
 
       if (delta !== 0) {
@@ -114,8 +136,21 @@ export default function EditUser() {
         <div className="h-24 bg-linear-to-br from-[#1a2744] via-brand-600 to-brand-500" />
         <div className="px-5 pb-5">
           <div className="-mt-8 mb-3">
-            <div className="ring-4 ring-white rounded-full shadow-sm inline-block">
-              <Avatar name={user.name} src={user.photoURL} size="h-16 w-16" />
+            <div className="relative inline-block">
+              <div className="ring-4 ring-white rounded-full shadow-sm">
+                <Avatar name={name || user.name} src={photoURL} size="h-16 w-16" />
+              </div>
+              {isCloudinaryConfigured && (
+                <button
+                  type="button"
+                  onClick={() => photoRef.current?.click()}
+                  disabled={photoUploading}
+                  className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full bg-brand-600 text-white shadow-md hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {photoUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                </button>
+              )}
+              <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={onPickPhoto} />
             </div>
           </div>
 

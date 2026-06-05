@@ -385,6 +385,7 @@ export async function adminCreateUser(data) {
       trade: data.trade || 'Mason',
       city: data.city || '',
       role: 'user',
+      photoURL: data.photoURL || '',
     })
   }
 
@@ -404,6 +405,7 @@ export async function adminCreateUser(data) {
       trade: data.trade || 'Mason',
       city: data.city || '',
       role: 'user',
+      photoURL: data.photoURL || '',
       plainPassword: data.password || 'Mistri@123',
     })
   } finally {

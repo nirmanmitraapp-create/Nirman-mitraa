@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, UserPlus, Eye, EyeOff, Lock, Mail, Phone, User, ChevronUp, ChevronDown, X, SlidersHorizontal } from 'lucide-react'
+import { Search, UserPlus, Eye, EyeOff, Lock, Mail, Phone, User, ChevronUp, ChevronDown, X, SlidersHorizontal, Camera, Loader2 } from 'lucide-react'
 import { getLeaderboard, adminCreateUser } from '../../services/db'
 import {
   SectionHeader, PageLoader, Avatar, Modal, Badge, Pagination, usePaged, Spinner,
 } from '../../components/ui/index.jsx'
+import { uploadImage, isCloudinaryConfigured } from '../../services/cloudinary'
 import { num, inr, dateStr } from '../../utils/format'
 
 const TRADES = ['Mason', 'Plumber', 'Electrician', 'Contractor', 'Painter', 'Carpenter', 'Mistri', 'Other']
@@ -32,10 +33,12 @@ export default function ManageUsers() {
 
   // create modal
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState({ name: '', email: '', phone: '', trade: 'Mason', city: '', password: '' })
+  const [createForm, setCreateForm] = useState({ name: '', email: '', phone: '', trade: 'Mason', city: '', password: '', photoURL: '' })
   const [showCreatePwd, setShowCreatePwd] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
   const [createErr, setCreateErr] = useState('')
+  const [photoUploading, setPhotoUploading] = useState(false)
+  const photoRef = useRef(null)
 
   const load = () => getLeaderboard().then(setRows)
   useEffect(() => { load() }, [])
@@ -68,8 +71,23 @@ export default function ManageUsers() {
   const setField = (k) => (e) => setCreateForm((f) => ({ ...f, [k]: e.target.value }))
 
   const openCreate = () => {
-    setCreateForm({ name: '', email: '', phone: '', trade: 'Mason', city: '', password: '' })
-    setCreateErr(''); setShowCreatePwd(false); setCreateOpen(true)
+    setCreateForm({ name: '', email: '', phone: '', trade: 'Mason', city: '', password: '', photoURL: '' })
+    setCreateErr(''); setShowCreatePwd(false); setPhotoUploading(false); setCreateOpen(true)
+  }
+
+  const onPickPhoto = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setPhotoUploading(true)
+    try {
+      const url = await uploadImage(file)
+      setCreateForm((f) => ({ ...f, photoURL: url }))
+    } catch (err) {
+      setCreateErr(err.message)
+    } finally {
+      setPhotoUploading(false)
+    }
   }
 
   const submitCreate = async (e) => {
@@ -240,8 +258,7 @@ export default function ManageUsers() {
                 paged.pageItems.map((u) => (
                   <tr
                     key={u.id}
-                    className="cursor-pointer hover:bg-slate-50 transition-colors"
-                    onClick={() => navigate(`/admin/users/${u.id}`)}
+                    className="hover:bg-slate-50 transition-colors"
                   >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -262,7 +279,7 @@ export default function ManageUsers() {
                     <td className="px-4 py-3 text-right text-slate-400 tabular-nums">{dateStr(u.createdAt)}</td>
                     <td className="px-4 py-3 text-right">
                       <button
-                        onClick={(e) => { e.stopPropagation(); navigate(`/admin/users/${u.id}`) }}
+                        onClick={() => navigate(`/admin/users/${u.id}`)}
                         className="btn-ghost px-3 py-1.5 text-xs"
                       >
                         Edit
@@ -281,6 +298,24 @@ export default function ManageUsers() {
       {/* ── Create user modal ── */}
       <Modal open={createOpen} onClose={() => setCreateOpen(false)} title="Create User Account" maxWidth="max-w-lg">
         <form onSubmit={submitCreate} className="space-y-4">
+          {/* Profile photo */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="relative">
+              <Avatar name={createForm.name || 'U'} src={createForm.photoURL} size="h-20 w-20" />
+              {isCloudinaryConfigured && (
+                <button
+                  type="button"
+                  onClick={() => photoRef.current?.click()}
+                  disabled={photoUploading}
+                  className="absolute -bottom-1 -right-1 grid h-7 w-7 place-items-center rounded-full bg-brand-600 text-white shadow-md hover:bg-brand-700 disabled:opacity-60"
+                >
+                  {photoUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                </button>
+              )}
+              <input ref={photoRef} type="file" accept="image/*" className="hidden" onChange={onPickPhoto} />
+            </div>
+            <p className="text-xs text-slate-400">{isCloudinaryConfigured ? 'Tap camera to upload photo' : 'Photo upload unavailable (Cloudinary not configured)'}</p>
+          </div>
           <div>
             <label className="label">Full Name *</label>
             <FormField icon={User}>

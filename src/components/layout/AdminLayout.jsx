@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, Users, Coins,
@@ -17,11 +18,21 @@ const nav = [
 export default function AdminLayout() {
   const { profile, logout } = useAuth()
   const navigate = useNavigate()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
 
   const onLogout = async () => {
     await logout()
     navigate('/login')
   }
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
 
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
@@ -65,12 +76,29 @@ export default function AdminLayout() {
             <img src="/logo.jpeg" alt="Nirman Mitra" className="h-8 w-8 rounded-xl object-cover lg:hidden" />
             <h1 className="font-bold text-slate-900">Admin Panel</h1>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="relative flex items-center gap-3" ref={menuRef}>
             <span className="hidden text-sm text-slate-500 sm:block">{profile?.name}</span>
-            <Avatar name={profile?.name} src={profile?.photoURL} size="h-9 w-9" />
-            <button onClick={onLogout} className="hidden items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-50 sm:flex lg:hidden">
-              <LogOut className="h-4 w-4" /> Logout
+            <button
+              onClick={() => setMenuOpen((s) => !s)}
+              className="rounded-full focus:outline-none focus:ring-2 focus:ring-brand-500"
+              aria-label="Profile menu"
+            >
+              <Avatar name={profile?.name} src={profile?.photoURL} size="h-9 w-9" />
             </button>
+            {menuOpen && (
+              <div className="absolute right-0 top-12 z-50 min-w-44 rounded-2xl border border-slate-200 bg-white py-1 shadow-lg">
+                <div className="border-b border-slate-100 px-4 py-2.5">
+                  <p className="text-sm font-semibold text-slate-900">{profile?.name || 'Admin'}</p>
+                  <p className="truncate text-xs text-slate-400">{profile?.email}</p>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm font-medium text-rose-500 hover:bg-rose-50"
+                >
+                  <LogOut className="h-4 w-4" /> Logout
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
