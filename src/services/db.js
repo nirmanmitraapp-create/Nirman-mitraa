@@ -73,9 +73,28 @@ export async function updateUser(id, patch) {
 }
 
 export async function deleteUser(id) {
-  if (!isFirebaseConfigured) return mock.remove('users', id)
-  const { doc, deleteDoc } = await firestore()
-  await deleteDoc(doc(db, 'users', id))
+  if (!isFirebaseConfigured) {
+    mock.set('sales',         mock.get('sales').filter((s) => s.userId !== id))
+    mock.set('redemptions',   mock.get('redemptions').filter((r) => r.userId !== id))
+    mock.set('notifications', mock.get('notifications').filter((n) => n.targetUserId !== id))
+    mock.remove('users', id)
+    return
+  }
+  const { doc, collection, query, where, getDocs, writeBatch } = await firestore()
+  const batch = writeBatch(db)
+
+  const [salesSnap, redemptionsSnap, notifSnap] = await Promise.all([
+    getDocs(query(collection(db, 'sales'),         where('userId',       '==', id))),
+    getDocs(query(collection(db, 'redemptions'),   where('userId',       '==', id))),
+    getDocs(query(collection(db, 'notifications'), where('targetUserId', '==', id))),
+  ])
+
+  salesSnap.docs.forEach((d)       => batch.delete(d.ref))
+  redemptionsSnap.docs.forEach((d) => batch.delete(d.ref))
+  notifSnap.docs.forEach((d)       => batch.delete(d.ref))
+  batch.delete(doc(db, 'users', id))
+
+  await batch.commit()
 }
 
 export async function listUsers() {
