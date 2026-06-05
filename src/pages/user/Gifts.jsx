@@ -34,7 +34,7 @@ export default function Gifts() {
           const remaining = Math.max(0, g.pointsCost - profile.points)
           return (
             <div key={g.id} className="card flex flex-col overflow-hidden p-4">
-              <div className="grid h-24 place-items-center overflow-hidden rounded-xl bg-slate-50 text-5xl"><GiftImage image={g.image} emojiClass="text-5xl" /></div>
+              <div className="grid h-24 place-items-center overflow-hidden rounded-xl bg-slate-50"><GiftImage image={g.image} /></div>
               <p className="mt-3 line-clamp-1 font-semibold text-slate-900">{g.title}</p>
               <p className="line-clamp-2 text-xs text-slate-500">{g.description}</p>
               <div className="mt-2 flex items-center gap-1 text-amber-600">

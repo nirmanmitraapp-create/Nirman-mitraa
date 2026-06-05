@@ -6,8 +6,7 @@ import { SectionHeader, PageLoader, Modal, Badge, EmptyState, Avatar, Pagination
 import { uploadImage, isCloudinaryConfigured, isImageUrl } from '../../services/cloudinary'
 import { num, timeAgo } from '../../utils/format'
 
-const blank = { title: '', pointsCost: '', image: '🎁' }
-const EMOJIS = ['🎁', '🥤', '👕', '🧰', '📱', '⛑️', '🔧', '🎽', '⌚', '🎒', '🪛', '☂️']
+const blank = { title: '', pointsCost: '', image: '' }
 const statusTone = { pending: 'amber', approved: 'blue', delivered: 'green', rejected: 'rose' }
 
 export default function ManageGifts() {
@@ -122,7 +121,7 @@ export default function ManageGifts() {
           {gifts.map((g) => (
             <div key={g.id} className="card flex flex-col p-4">
               <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-slate-50">
-                <GiftImage image={g.image} emojiClass="absolute inset-0 flex items-center justify-center text-5xl w-full h-full" />
+                <GiftImage image={g.image} />
               </div>
               <div className="mt-3">
                 <p className="line-clamp-1 font-semibold text-slate-900">{g.title}</p>
@@ -187,7 +186,7 @@ export default function ManageGifts() {
             <div className="flex items-center gap-4">
               {/* preview */}
               <div className="grid h-20 w-20 shrink-0 place-items-center overflow-hidden rounded-xl border border-slate-200 bg-slate-50 text-3xl">
-                <GiftImage image={form.image} emojiClass="text-3xl" />
+                <GiftImage image={form.image} />
               </div>
 
               <div className="min-w-0 flex-1">
@@ -207,7 +206,7 @@ export default function ManageGifts() {
                     {isImageUrl(form.image) && !uploading && (
                       <button
                         type="button"
-                        onClick={() => setForm((f) => ({ ...f, image: '🎁' }))}
+                        onClick={() => setForm((f) => ({ ...f, image: '' }))}
                         className="mt-1.5 flex items-center gap-1 text-xs font-medium text-rose-600 hover:underline"
                       >
                         <ImageOff className="h-3.5 w-3.5" /> Remove image
@@ -216,23 +215,13 @@ export default function ManageGifts() {
                   </>
                 ) : (
                   <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                    Image upload is disabled — set <span className="font-mono">VITE_CLOUDINARY_CLOUD_NAME</span> in <span className="font-mono">.env</span>. You can still pick an emoji below.
+                    Image upload is disabled — set <span className="font-mono">VITE_CLOUDINARY_CLOUD_NAME</span> in <span className="font-mono">.env</span>.
                   </p>
                 )}
                 {uploadErr && <p className="mt-1.5 text-xs text-rose-600">{uploadErr}</p>}
               </div>
             </div>
 
-            {/* emoji fallback */}
-            <p className="mt-3 text-xs text-slate-400">Or pick an emoji icon</p>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {EMOJIS.map((e) => (
-                <button type="button" key={e} onClick={() => setForm((f) => ({ ...f, image: e }))}
-                  className={`grid h-10 w-10 place-items-center rounded-lg text-xl ${form.image === e ? 'bg-brand-100 ring-2 ring-brand-500' : 'bg-slate-100'}`}>
-                  {e}
-                </button>
-              ))}
-            </div>
           </div>
           <div>
             <label className="label">Title</label>
@@ -256,7 +245,7 @@ export default function ManageGifts() {
         {giving && (
           <div>
             <div className="flex items-center gap-3 rounded-xl bg-slate-50 p-3">
-              <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-xl bg-white text-3xl"><GiftImage image={giving.image} emojiClass="text-3xl" /></span>
+              <span className="grid h-12 w-12 place-items-center overflow-hidden rounded-xl bg-white"><GiftImage image={giving.image} /></span>
               <div>
                 <p className="font-semibold text-slate-900">{giving.title}</p>
                 <p className="flex items-center gap-1 text-sm text-amber-600"><Coins className="h-3.5 w-3.5" /> {num(giving.pointsCost)} pts will be deducted</p>

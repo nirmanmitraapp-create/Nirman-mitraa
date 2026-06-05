@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Loader2, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Loader2, X, ChevronLeft, ChevronRight, Gift } from 'lucide-react'
 
 export function Spinner({ className = '' }) {
   return <Loader2 className={`animate-spin ${className}`} />
@@ -168,10 +168,10 @@ export function Pagination({ page, totalPages, onChange, total, start, pageSize,
 
 // Renders a gift's image: a Cloudinary URL as a cover <img>, or an emoji icon.
 // Place inside a sized container (the <img> fills it).
-export function GiftImage({ image, emojiClass = 'text-4xl' }) {
+export function GiftImage({ image }) {
   const isUrl = typeof image === 'string' && /^https?:\/\//.test(image)
   if (isUrl) return <img src={image} alt="" className="h-full w-full object-contain" />
-  return <span className={emojiClass}>{image || '🎁'}</span>
+  return <Gift className="h-1/2 w-1/2 text-slate-300" />
 }
 
 export function Avatar({ name, src, size = 'h-10 w-10' }) {

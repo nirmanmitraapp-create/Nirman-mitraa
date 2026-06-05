@@ -7,7 +7,7 @@ import {
 } from '../../components/ui/index.jsx'
 import { num, inr, dateStr } from '../../utils/format'
 
-const TRADES = ['Mason', 'Plumber', 'Electrician', 'Contractor', 'Painter', 'Carpenter', 'Other']
+const TRADES = ['Mason', 'Plumber', 'Electrician', 'Contractor', 'Painter', 'Carpenter', 'Mistri', 'Other']
 const SORT_OPTIONS = [
   { label: 'Name (A–Z)',       key: 'name',         dir: 'asc'  },
   { label: 'Name (Z–A)',       key: 'name',         dir: 'desc' },
