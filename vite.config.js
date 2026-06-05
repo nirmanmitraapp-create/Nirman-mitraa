@@ -102,6 +102,7 @@ function sendPushPlugin() {
               const batch = tokens.slice(i, i + 500)
               const resp = await messaging.sendEachForMulticast({
                 tokens: batch,
+                notification: { title: String(title), body: String(body) },
                 data: { title: String(title), body: String(body), link: '/app/notifications' },
                 webpush: { headers: { Urgency: 'high' }, fcmOptions: { link: '/app/notifications' } },
               })

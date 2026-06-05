@@ -85,9 +85,10 @@ export default async function handler(req, res) {
       const batch = tokens.slice(i, i + 500)
       const resp = await messaging.sendEachForMulticast({
         tokens: batch,
-        // Data-only message: guarantees the service worker's onBackgroundMessage
-        // handler runs and shows the notification (avoids the browser auto-display
-        // ambiguity of `notification` messages). All values must be strings.
+        notification: {
+          title: String(title),
+          body: String(body),
+        },
         data: {
           title: String(title),
           body: String(body),
