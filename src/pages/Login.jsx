@@ -52,35 +52,40 @@ export default function Login() {
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* Brand panel */}
-      <div className="relative hidden flex-col justify-between overflow-hidden bg-brand-700 p-10 text-white lg:flex">
-        <div className="flex items-center gap-2">
-          <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/15 text-xl">🏗️</span>
-          <span className="text-lg font-bold">Mistri Rewards</span>
+      <div className="relative hidden flex-col justify-between overflow-hidden bg-[#1a2744] p-10 text-white lg:flex">
+        <div className="flex items-center gap-3">
+          <img src="/logo.jpeg" alt="Nirman Mitra" className="h-12 w-12 rounded-2xl object-cover ring-2 ring-brand-500/50" />
+          <div>
+            <p className="text-lg font-bold leading-tight">Nirman Mitra</p>
+            <p className="text-xs text-brand-400">Mistri Loyalty App</p>
+          </div>
         </div>
         <div>
           <h1 className="text-4xl font-extrabold leading-tight">Refer. Sell. Earn rewards.</h1>
-          <p className="mt-4 max-w-md text-brand-100">
+          <p className="mt-4 max-w-md text-slate-300">
             The loyalty program for Mistris &amp; Contractors. Bring customers to the shop, earn
             commission points on every purchase, and redeem exciting gifts.
           </p>
-          <ul className="mt-8 space-y-3 text-brand-50">
-            <li className="flex items-center gap-3"><ShieldCheck className="h-5 w-5" /> Secure email &amp; Google login</li>
-            <li className="flex items-center gap-3"><Smartphone className="h-5 w-5" /> Track sales &amp; commission live</li>
-            <li className="flex items-center gap-3"><ArrowRight className="h-5 w-5" /> Climb the leaderboard</li>
+          <ul className="mt-8 space-y-3 text-slate-200">
+            <li className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-brand-400" /> Secure email login</li>
+            <li className="flex items-center gap-3"><Smartphone className="h-5 w-5 text-brand-400" /> Track sales &amp; commission live</li>
+            <li className="flex items-center gap-3"><ArrowRight className="h-5 w-5 text-brand-400" /> Climb the leaderboard</li>
           </ul>
+          <p className="mt-8 text-sm font-semibold italic text-brand-400">मेहनत का सम्मान, विश्वास का इनाम।</p>
         </div>
-        <p className="text-xs text-brand-200">© {new Date().getFullYear()} Mistri Rewards</p>
-        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/10" />
-        <div className="pointer-events-none absolute -bottom-24 -left-10 h-80 w-80 rounded-full bg-brand-600/40" />
+        <p className="text-xs text-slate-500">© {new Date().getFullYear()} Nirman Mitra</p>
+        <div className="pointer-events-none absolute -right-20 -top-20 h-72 w-72 rounded-full bg-white/5" />
+        <div className="pointer-events-none absolute -bottom-24 -left-10 h-80 w-80 rounded-full bg-[#0d1525]/60" />
+        <div className="pointer-events-none absolute right-10 bottom-24 h-40 w-40 rounded-full bg-brand-500/10" />
       </div>
 
       {/* Form panel */}
       <div className="flex items-center justify-center bg-slate-50 p-5 sm:p-8">
         <div className="w-full max-w-sm">
           <div className="mb-6 text-center lg:hidden">
-            <span className="mb-3 inline-grid h-14 w-14 place-items-center rounded-2xl bg-brand-700 text-2xl">🏗️</span>
-            <h1 className="text-2xl font-extrabold text-slate-900">Mistri Rewards</h1>
-            <p className="text-sm text-slate-500">Loyalty program for Mistris &amp; Contractors</p>
+            <img src="/logo.jpeg" alt="Nirman Mitra" className="mb-3 inline-block h-16 w-16 rounded-2xl object-cover shadow-md" />
+            <h1 className="text-2xl font-extrabold text-[#1a2744]">Nirman Mitra</h1>
+            <p className="text-sm text-slate-500">Mistri Loyalty App</p>
           </div>
 
           {isDemo && (

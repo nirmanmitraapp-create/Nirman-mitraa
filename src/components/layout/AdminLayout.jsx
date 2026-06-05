@@ -25,13 +25,13 @@ export default function AdminLayout() {
 
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
-      {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-slate-900 px-4 py-6 lg:flex">
-        <div className="flex items-center gap-2 px-2">
-          <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-700 text-lg">🏗️</span>
+      {/* Desktop sidebar — dark navy from logo */}
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-[#1a2744] px-4 py-6 lg:flex">
+        <div className="flex items-center gap-2.5 px-2">
+          <img src="/logo.jpeg" alt="Nirman Mitra" className="h-10 w-10 rounded-xl object-cover ring-2 ring-white/20" />
           <div>
             <p className="font-extrabold leading-tight text-white">Admin Panel</p>
-            <p className="text-[11px] text-slate-400">Mistri Rewards</p>
+            <p className="text-[11px] text-brand-300">Nirman Mitra</p>
           </div>
         </div>
         <nav className="mt-8 flex flex-1 flex-col gap-1">
@@ -42,7 +42,9 @@ export default function AdminLayout() {
               end={n.end}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                  isActive ? 'bg-brand-600 text-white' : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  isActive
+                    ? 'bg-brand-500 text-white'
+                    : 'text-slate-300 hover:bg-[#243660] hover:text-white'
                 }`
               }
             >
@@ -51,7 +53,7 @@ export default function AdminLayout() {
             </NavLink>
           ))}
         </nav>
-        <button onClick={onLogout} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-300 hover:bg-slate-800">
+        <button onClick={onLogout} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-rose-300 hover:bg-[#243660] hover:text-white transition">
           <LogOut className="h-5 w-5" /> Logout
         </button>
       </aside>
@@ -59,8 +61,8 @@ export default function AdminLayout() {
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Header */}
         <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200 bg-white/90 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="flex items-center gap-2">
-            <span className="grid h-8 w-8 place-items-center rounded-xl bg-brand-700 text-base lg:hidden">🏗️</span>
+          <div className="flex items-center gap-2.5">
+            <img src="/logo.jpeg" alt="Nirman Mitra" className="h-8 w-8 rounded-xl object-cover lg:hidden" />
             <h1 className="font-bold text-slate-900">Admin Panel</h1>
           </div>
           <div className="flex items-center gap-3">
@@ -72,7 +74,6 @@ export default function AdminLayout() {
           </div>
         </header>
 
-        {/* Page content — extra bottom padding on mobile for the tab bar */}
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-5 pb-24 sm:px-6 lg:pb-5">
           <Outlet />
         </main>

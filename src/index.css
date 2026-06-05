@@ -4,17 +4,19 @@
    Design tokens — used across user app + admin panel
 --------------------------------------------------------------------------- */
 @theme {
-  --color-brand-50: #f0fdfa;
-  --color-brand-100: #ccfbf1;
-  --color-brand-200: #99f6e4;
-  --color-brand-300: #5eead4;
-  --color-brand-400: #2dd4bf;
-  --color-brand-500: #14b8a6;
-  --color-brand-600: #0d9488;
-  --color-brand-700: #0f766e;
-  --color-brand-800: #115e59;
-  --color-brand-900: #134e4a;
+  /* Orange — primary brand color from Nirman Mitra logo */
+  --color-brand-50: #fff8f0;
+  --color-brand-100: #feeedd;
+  --color-brand-200: #fcd8b0;
+  --color-brand-300: #f9ba78;
+  --color-brand-400: #f69040;
+  --color-brand-500: #f47920;
+  --color-brand-600: #e0650f;
+  --color-brand-700: #be5309;
+  --color-brand-800: #9b4008;
+  --color-brand-900: #7b3006;
 
+  /* Gold star accent */
   --color-gold-400: #fbbf24;
   --color-gold-500: #f59e0b;
 

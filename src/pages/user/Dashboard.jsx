@@ -49,7 +49,7 @@ export default function Dashboard() {
   return (
     <div className="space-y-5">
       {/* Referral ID card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg sm:p-6">
+      <div className="relative overflow-hidden rounded-2xl bg-linear-to-br from-brand-700 to-brand-900 p-5 text-white shadow-lg sm:p-6">
         <div className="relative z-10">
           <p className="text-sm text-brand-100">Your Referral ID</p>
           <div className="mt-1 flex items-center gap-3">
@@ -86,7 +86,7 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
               <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
-              <Bar dataKey="points" fill="#0d9488" radius={[6, 6, 0, 0]} maxBarSize={48} />
+              <Bar dataKey="points" fill="#f47920" radius={[6, 6, 0, 0]} maxBarSize={48} />
             </BarChart>
           </ResponsiveContainer>
         </div>

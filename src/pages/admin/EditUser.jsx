@@ -111,7 +111,7 @@ export default function EditUser() {
 
       {/* ── User Hero Card ── */}
       <div className="card overflow-hidden">
-        <div className="h-24 bg-linear-to-br from-brand-600 via-brand-500 to-teal-400" />
+        <div className="h-24 bg-linear-to-br from-[#1a2744] via-brand-600 to-brand-500" />
         <div className="px-5 pb-5">
           <div className="-mt-8 mb-3">
             <div className="ring-4 ring-white rounded-full shadow-sm inline-block">

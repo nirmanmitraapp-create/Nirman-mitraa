@@ -105,7 +105,7 @@ export default function UserLayout() {
   return (
     <div className="min-h-screen bg-slate-100 lg:flex">
       {/* Desktop side rail */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-200 bg-white px-4 py-6 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-brand-100 bg-white px-4 py-6 lg:flex">
         <Brand />
         <nav className="mt-8 flex flex-1 flex-col gap-1">
           {nav.map((n) => (
@@ -115,7 +115,7 @@ export default function UserLayout() {
               end={n.end}
               className={({ isActive }) =>
                 `flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
-                  isActive ? 'bg-brand-50 text-brand-700' : 'text-slate-600 hover:bg-slate-100'
+                  isActive ? 'bg-brand-50 text-brand-700 font-semibold' : 'text-slate-600 hover:bg-slate-100'
                 }`
               }
             >
@@ -204,15 +204,15 @@ export default function UserLayout() {
 
 function Brand({ small }) {
   return (
-    <div className="flex items-center gap-2">
-      <span className="grid h-9 w-9 place-items-center rounded-xl bg-brand-700 text-lg">🏗️</span>
+    <div className="flex items-center gap-2.5">
+      <img src="/logo.jpeg" alt="Nirman Mitra" className="h-9 w-9 rounded-xl object-cover ring-1 ring-brand-100" />
       {!small && (
         <div>
-          <p className="font-extrabold leading-tight text-slate-900">Mistri Rewards</p>
-          <p className="text-[11px] text-slate-400">Loyalty Program</p>
+          <p className="font-extrabold leading-tight text-[#1a2744]">Nirman Mitra</p>
+          <p className="text-[11px] text-slate-400">Mistri Loyalty App</p>
         </div>
       )}
-      {small && <p className="font-extrabold text-slate-900">Mistri Rewards</p>}
+      {small && <p className="font-extrabold text-[#1a2744]">Nirman Mitra</p>}
     </div>
   )
 }

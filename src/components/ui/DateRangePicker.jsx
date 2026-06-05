@@ -5,8 +5,8 @@ import { CalendarDays, X, ChevronLeft, ChevronRight } from 'lucide-react'
 import 'react-day-picker/style.css'
 
 const rdpStyles = {
-  '--rdp-accent-color': '#0f766e',
-  '--rdp-accent-background-color': '#ccfbf1',
+  '--rdp-accent-color': '#f47920',
+  '--rdp-accent-background-color': '#fff8f0',
   '--rdp-day-height': '36px',
   '--rdp-day-width': '36px',
   '--rdp-day_button-height': '34px',

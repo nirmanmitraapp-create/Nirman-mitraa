@@ -1,12 +1,12 @@
 {
-  "name": "Mistri Rewards",
-  "short_name": "Mistri Rewards",
-  "description": "Mistri & Contractor loyalty rewards platform",
+  "name": "Nirman Mitra",
+  "short_name": "Nirman Mitra",
+  "description": "Mistri Loyalty App — Mehnat ka Samman, Vishwas ka Inaam",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#0f766e",
+  "theme_color": "#f47920",
   "icons": [
     {
       "src": "/favicon.svg",

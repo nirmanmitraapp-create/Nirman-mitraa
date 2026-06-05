@@ -9,7 +9,7 @@ import { getAdminStats } from '../../services/db'
 import { StatCard, SectionHeader, PageLoader, Avatar, Badge, EmptyState } from '../../components/ui/index.jsx'
 import { num, dateStr } from '../../utils/format'
 
-const PIE_COLORS = ['#0d9488', '#f59e0b', '#3b82f6', '#ef4444', '#8b5cf6', '#10b981']
+const PIE_COLORS = ['#f47920', '#1a2744', '#3b82f6', '#ef4444', '#8b5cf6', '#10b981']
 const RANGES = [
   { key: '3m', label: '3M', months: 3, full: 'last 3 months' },
   { key: '6m', label: '6M', months: 6, full: 'last 6 months' },
@@ -116,15 +116,15 @@ export default function AdminDashboard() {
               <AreaChart data={trend} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                 <defs>
                   <linearGradient id="ptsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.35} />
-                    <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
+                    <stop offset="5%" stopColor="#f47920" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#f47920" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#94a3b8' }} axisLine={false} tickLine={false} interval="preserveStartEnd" />
                 <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip formatter={(v) => [`${num(v)} pts`, 'Points']} contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 12 }} />
-                <Area type="monotone" dataKey="points" stroke="#f59e0b" strokeWidth={2.5} fill="url(#ptsGrad)" />
+                <Area type="monotone" dataKey="points" stroke="#f47920" strokeWidth={2.5} fill="url(#ptsGrad)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
