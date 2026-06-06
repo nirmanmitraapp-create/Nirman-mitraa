@@ -29,7 +29,13 @@ export function AuthProvider({ children }) {
                 role: isAdminEmail(email) ? 'admin' : 'user',
               })
             }
-            setProfile(rec)
+            if (rec.role !== 'admin') {
+              const { signOut: fbSignOut } = await import('firebase/auth')
+              await fbSignOut(auth)
+              setProfile(null)
+            } else {
+              setProfile(rec)
+            }
           } else {
             setProfile(null)
           }
@@ -40,7 +46,11 @@ export function AuthProvider({ children }) {
         const savedUid = localStorage.getItem(DEMO_SESSION_KEY)
         if (savedUid) {
           const rec = await getUserByUid(savedUid)
-          setProfile(rec)
+          if (rec?.role === 'admin') {
+            setProfile(rec)
+          } else {
+            localStorage.removeItem(DEMO_SESSION_KEY)
+          }
         }
         setLoading(false)
       }
@@ -85,12 +95,13 @@ export function AuthProvider({ children }) {
       const rec = await getUserByEmail(cleanEmail)
       if (!rec) throw new Error('No account found with this email. Please sign up.')
       if (rec.password && rec.password !== password) throw new Error('Incorrect password.')
+      if (rec.role !== 'admin') throw new Error('Access denied. This portal is for admins only.')
       localStorage.setItem(DEMO_SESSION_KEY, rec.uid)
       setProfile(rec)
       return rec
     }
 
-    const { signInWithEmailAndPassword } = await import('firebase/auth')
+    const { signInWithEmailAndPassword, signOut: fbSignOut } = await import('firebase/auth')
     const cred = await signInWithEmailAndPassword(auth, cleanEmail, password)
     let rec = await getUserByUid(cred.user.uid)
     if (!rec) {
@@ -99,6 +110,10 @@ export function AuthProvider({ children }) {
         name: cred.user.displayName || cleanEmail.split('@')[0],
         role: isAdminEmail(cleanEmail) ? 'admin' : 'user',
       })
+    }
+    if (rec.role !== 'admin') {
+      await fbSignOut(auth)
+      throw new Error('Access denied. This portal is for admins only.')
     }
     setProfile(rec)
     return rec
@@ -116,12 +131,13 @@ export function AuthProvider({ children }) {
           role: isAdminEmail(email) ? 'admin' : 'user',
         })
       }
+      if (rec.role !== 'admin') throw new Error('Access denied. This portal is for admins only.')
       localStorage.setItem(DEMO_SESSION_KEY, rec.uid)
       setProfile(rec)
       return rec
     }
 
-    const { GoogleAuthProvider, signInWithPopup } = await import('firebase/auth')
+    const { GoogleAuthProvider, signInWithPopup, signOut: fbSignOut } = await import('firebase/auth')
     const provider = new GoogleAuthProvider()
     const cred = await signInWithPopup(auth, provider)
     const fbUser = cred.user
@@ -134,6 +150,10 @@ export function AuthProvider({ children }) {
         photoURL: fbUser.photoURL || '',
         role: isAdminEmail(email) ? 'admin' : 'user',
       })
+    }
+    if (rec.role !== 'admin') {
+      await fbSignOut(auth)
+      throw new Error('Access denied. This portal is for admins only.')
     }
     setProfile(rec)
     return rec
