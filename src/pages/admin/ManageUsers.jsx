@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search, UserPlus, Eye, EyeOff, Lock, Mail, Phone, User, ChevronUp, ChevronDown, X, SlidersHorizontal, Camera, Loader2 } from 'lucide-react'
+import { Search, UserPlus, Eye, EyeOff, Lock, Phone, User, ChevronUp, ChevronDown, X, SlidersHorizontal, Camera, Loader2 } from 'lucide-react'
 import { getLeaderboard, adminCreateUser } from '../../services/db'
 import {
   SectionHeader, PageLoader, Avatar, Modal, Badge, Pagination, usePaged, Spinner,
@@ -33,7 +33,7 @@ export default function ManageUsers() {
 
   // create modal
   const [createOpen, setCreateOpen] = useState(false)
-  const [createForm, setCreateForm] = useState({ name: '', email: '', phone: '', trade: 'Mason', city: '', password: '', photoURL: '' })
+  const [createForm, setCreateForm] = useState({ name: '', phone: '', trade: 'Mason', city: '', password: '', photoURL: '' })
   const [showCreatePwd, setShowCreatePwd] = useState(false)
   const [createBusy, setCreateBusy] = useState(false)
   const [createErr, setCreateErr] = useState('')
@@ -71,7 +71,7 @@ export default function ManageUsers() {
   const setField = (k) => (e) => setCreateForm((f) => ({ ...f, [k]: e.target.value }))
 
   const openCreate = () => {
-    setCreateForm({ name: '', email: '', phone: '', trade: 'Mason', city: '', password: '', photoURL: '' })
+    setCreateForm({ name: '', phone: '', trade: 'Mason', city: '', password: '', photoURL: '' })
     setCreateErr(''); setShowCreatePwd(false); setPhotoUploading(false); setCreateOpen(true)
   }
 
@@ -93,11 +93,12 @@ export default function ManageUsers() {
   const submitCreate = async (e) => {
     e.preventDefault(); setCreateErr('')
     if (!createForm.name.trim()) return setCreateErr('Full name is required.')
-    if (!/\S+@\S+\.\S+/.test(createForm.email)) return setCreateErr('Enter a valid email address.')
+    if (!/^[1-9]\d{9}$/.test(createForm.phone.trim())) return setCreateErr('Enter a valid 10-digit mobile number (cannot start with 0).')
     if (createForm.password.length < 6) return setCreateErr('Password must be at least 6 characters.')
     setCreateBusy(true)
+    const syntheticEmail = `${createForm.phone.trim()}@nirmanmitra.com`
     try {
-      await adminCreateUser(createForm)
+      await adminCreateUser({ ...createForm, email: syntheticEmail })
       setCreateOpen(false); load()
     } catch (err) {
       setCreateErr(err.message || 'Failed to create account.')
@@ -323,16 +324,22 @@ export default function ManageUsers() {
             </FormField>
           </div>
           <div>
-            <label className="label">Email *</label>
-            <FormField icon={Mail}>
-              <input type="email" className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="user@example.com" value={createForm.email} onChange={setField('email')} required />
-            </FormField>
-          </div>
-          <div>
-            <label className="label">Phone Number</label>
+            <label className="label">Mobile Number *</label>
             <FormField icon={Phone}>
-              <input type="tel" className="w-full bg-transparent py-2.5 text-sm outline-none" placeholder="10-digit mobile number" value={createForm.phone} onChange={setField('phone')} />
+              <input
+                type="tel"
+                className="w-full bg-transparent py-2.5 text-sm outline-none"
+                placeholder="10-digit mobile number"
+                value={createForm.phone}
+                maxLength={10}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').replace(/^0+/, '')
+                  setCreateForm((f) => ({ ...f, phone: val.slice(0, 10) }))
+                }}
+                required
+              />
             </FormField>
+            <p className="mt-1 text-xs text-slate-400">Used as login credential ({createForm.phone.trim() || '1234567890'}@nirmanmitra.com)</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
