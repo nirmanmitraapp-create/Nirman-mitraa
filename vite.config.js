@@ -135,8 +135,73 @@ function sendPushPlugin() {
   }
 }
 
+// Dev-only middleware that mirrors /api/delete-user so account deletion works
+// with plain `vite dev`. In production the Vercel serverless function handles it.
+function deleteUserPlugin() {
+  return {
+    name: 'delete-user',
+    configureServer(server) {
+      server.middlewares.use('/api/delete-user', (req, res) => {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Method not allowed' }))
+          return
+        }
+        let raw = ''
+        req.on('data', (chunk) => { raw += chunk })
+        req.on('end', async () => {
+          const json = (body, status = 200) => {
+            res.writeHead(status, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify(body))
+          }
+          try {
+            const env = loadEnv('development', process.cwd(), '')
+            const payload = JSON.parse(raw || '{}')
+
+            const { initializeApp, getApps, cert } = await import('firebase-admin/app')
+            const { getAuth } = await import('firebase-admin/auth')
+
+            if (!getApps().length) {
+              initializeApp({
+                credential: cert({
+                  projectId: env.FIREBASE_PROJECT_ID,
+                  clientEmail: env.FIREBASE_CLIENT_EMAIL,
+                  privateKey: (env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+                }),
+              })
+            }
+
+            const idToken = (req.headers.authorization || '').replace('Bearer ', '') || null
+            if (!idToken) return json({ error: 'Missing auth token' }, 401)
+
+            const decoded = await getAuth().verifyIdToken(idToken)
+            const email = (decoded.email || '').toLowerCase()
+            const adminEmails = (env.ADMIN_EMAILS || env.VITE_ADMIN_EMAILS || '')
+              .split(',').map((e) => e.trim().toLowerCase()).filter(Boolean)
+            if (!adminEmails.includes(email)) return json({ error: 'Not an admin' }, 403)
+
+            const { uid } = payload
+            if (!uid) return json({ error: 'Missing uid' }, 400)
+
+            try {
+              await getAuth().deleteUser(uid)
+            } catch (e) {
+              if (e?.code !== 'auth/user-not-found') throw e
+            }
+
+            json({ success: true })
+          } catch (e) {
+            res.writeHead(500, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: e?.message || 'Delete failed' }))
+          }
+        })
+      })
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), tailwindcss(), cloudinarySignPlugin(), sendPushPlugin()],
+  plugins: [react(), tailwindcss(), cloudinarySignPlugin(), sendPushPlugin(), deleteUserPlugin()],
   server: {
     host: true,
     port: 5173,

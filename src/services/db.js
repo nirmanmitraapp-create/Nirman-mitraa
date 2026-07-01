@@ -80,6 +80,26 @@ export async function deleteUser(id) {
     mock.remove('users', id)
     return
   }
+
+  // Remove the Firebase Auth login first, via a Vercel serverless function
+  // that uses the Admin SDK (see /api/delete-user.js). The client Auth SDK can
+  // only ever delete the currently signed-in user, never someone else's
+  // account, so this has to happen server-side. The Firestore doc id is
+  // always the Auth uid (see createUser), so `id` doubles as the uid here.
+  // Fails loudly rather than silently leaving an orphaned Auth account.
+  const { auth } = await import('../firebase/config')
+  const idToken = await auth?.currentUser?.getIdToken?.()
+  if (!idToken) throw new Error('No admin session — please sign in again.')
+  const res = await fetch('/api/delete-user', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ uid: id }),
+  })
+  if (!res.ok) {
+    const { error } = await res.json().catch(() => ({}))
+    throw new Error(error || 'Failed to delete the login (Authentication) account.')
+  }
+
   const { doc, collection, query, where, getDocs, writeBatch } = await firestore()
   const batch = writeBatch(db)
 
@@ -409,13 +429,30 @@ export async function adminCreateUser(data) {
   }
 
   const { initializeApp, deleteApp } = await import('firebase/app')
-  const { getAuth, createUserWithEmailAndPassword, updateProfile, signOut } = await import('firebase/auth')
+  const { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile, signOut } = await import('firebase/auth')
 
   const secondaryApp = initializeApp(firebaseConfig, 'admincreate_' + Date.now())
   const secondaryAuth = getAuth(secondaryApp)
+  const password = data.password || 'Mistri@123'
   try {
-    const cred = await createUserWithEmailAndPassword(secondaryAuth, cleanEmail, data.password || 'Mistri@123')
-    if (data.name) await updateProfile(cred.user, { displayName: data.name }).catch(() => {})
+    let cred
+    try {
+      cred = await createUserWithEmailAndPassword(secondaryAuth, cleanEmail, password)
+      if (data.name) await updateProfile(cred.user, { displayName: data.name }).catch(() => {})
+    } catch (err) {
+      if (err.code !== 'auth/email-already-in-use') throw err
+      // A login already exists for this phone number with no matching profile —
+      // almost always a leftover from an account whose Firestore doc was
+      // deleted without removing the Auth record. If the password just
+      // entered happens to match it, reclaim the account instead of failing.
+      try {
+        cred = await signInWithEmailAndPassword(secondaryAuth, cleanEmail, password)
+      } catch {
+        throw new Error(
+          `A login already exists for ${cleanEmail} but has no profile (likely left over from a previously deleted account), and the password entered doesn't match it. Try the phone number itself as the password, or remove the "${cleanEmail}" account from Firebase Console → Authentication before recreating it.`,
+        )
+      }
+    }
     await signOut(secondaryAuth)
     return createUser(cred.user.uid, {
       email: cleanEmail,
@@ -425,7 +462,7 @@ export async function adminCreateUser(data) {
       city: data.city || '',
       role: 'user',
       photoURL: data.photoURL || '',
-      plainPassword: data.password || 'Mistri@123',
+      plainPassword: password,
     })
   } finally {
     await deleteApp(secondaryApp).catch(() => {})
